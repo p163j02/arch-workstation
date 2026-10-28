@@ -27,6 +27,7 @@ gst-plugins-good
 gst-plugins-ugly
 gtk-layer-shell
 gtk3
+gtk4
 htop
 httpie
 hyprland
@@ -42,6 +43,7 @@ less
 libnm
 libnotify
 libpulse
+libadwaita
 libreoffice-fresh
 linux-firmware
 loupe
@@ -70,6 +72,7 @@ perl-yaml-tiny
 pipewire-alsa
 pipewire-pulse
 playerctl
+pkgconf
 power-profiles-daemon
 pulsemixer
 python
@@ -81,6 +84,7 @@ qt6-svg
 ripgrep
 rofi
 rsync
+rust
 sddm
 seahorse
 slurp

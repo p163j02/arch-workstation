@@ -61,6 +61,8 @@ if [[ "$MODE" == --install ]]; then
     sudo corepack enable
     corepack prepare pnpm@latest --activate
 
+    bash "$REPO_DIR/apps/waybar-editor/install.sh"
+
     if [[ "$PROFILE" == laptop && ! -x "$HOME/.local/bin/airpods-tui" ]]; then
         # The panel uses the IPC protocol verified with this exact upstream revision.
         cargo install --locked --git https://github.com/annoyedmilk/airpods-tui \

@@ -45,6 +45,18 @@ El instalador actualiza el sistema completo con `pacman -Syu`, instala las aplic
 
 Detecta microcódigo AMD/Intel y las GPU AMD, Intel o NVIDIA compatibles. Instala `nvidia-open-dkms` para NVIDIA; VirtualBox utiliza DKMS. En notebook instala Bluetooth y compila la revisión de AirPods compatible con el panel. Se usa Node.js 24 LTS con Corepack/pnpm; Fish conserva su integración con nvm.fish.
 
+La instalación completa de **ambos perfiles** también compila Waybar Editor desde el código incluido en `apps/waybar-editor`, con las versiones de dependencias fijadas en `Cargo.lock`. Instala `~/.local/bin/waybar-editor` y el acceso **Waybar Editor** en Rofi. Requiere Internet para descargar las dependencias de Rust; no copia un binario del equipo original.
+
+Si ya instalaste el entorno y solo quieres añadir el editor, desde el repositorio actualizado ejecuta como tu usuario:
+
+```bash
+sudo pacman -Syu --needed rust pkgconf gtk4 libadwaita python python-gobject python-cairo gtk3
+bash apps/waybar-editor/install.sh
+~/.local/bin/waybar-editor
+```
+
+Abrir el editor no modifica la barra. Puedes editar aplicaciones, módulos y apariencia; al pulsar **Aplicar** se guarda un respaldo y se solicita a Waybar una recarga. El modo `--config-only` no compila ni instala el editor. Consulta [su documentación](apps/waybar-editor/README.md).
+
 ## Comprobar sin instalar
 
 En un Arch que ya tenga Hyprland, Fish, Lua y Python:
@@ -156,6 +168,7 @@ El exportador también funciona desde una copia portable sin `.git`; en ese caso
 install.sh                 Instalación común, comprobación y modo config-only
 update.sh                  Exportación por perfil
 packages/                  Listas oficiales compartidas, por perfil y AUR
+apps/waybar-editor/        Código fuente, dependencias fijadas e instalador del editor
 scripts/                   Validación, detección de hardware y pruebas
 shared/hypr/               Configuración común y scripts de sesión
 shared/waybar/scripts/     Indicador multimedia compartido

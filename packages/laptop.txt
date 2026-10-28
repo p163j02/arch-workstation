@@ -2,4 +2,3 @@ blueman
 bluez
 bluez-utils
 brightnessctl
-rust

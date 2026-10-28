@@ -122,6 +122,32 @@ class InstallTests(unittest.TestCase):
         self.assertIn('Credencial literal', result.stdout + result.stderr)
         self.assertNotIn('local-' + 'only', result.stdout + result.stderr)
 
+    def test_waybar_editor_installs_without_changing_waybar(self):
+        app = Path(self.temp.name) / 'editor-source'
+        app.mkdir()
+        shutil.copy2(ROOT / 'apps/waybar-editor/install.sh', app / 'install.sh')
+        binaries = self.home / 'bin'
+        binaries.mkdir()
+        for name, script in {
+            'cargo': '#!/bin/sh\nmkdir -p target/release\nprintf "#!/bin/sh\\nexit 0\\n" > target/release/waybar-editor\n',
+            'pkg-config': '#!/bin/sh\nexit 0\n',
+        }.items():
+            path = binaries / name
+            path.write_text(script)
+            path.chmod(0o755)
+        config = self.home / '.config/waybar/config.jsonc'
+        config.parent.mkdir(parents=True)
+        config.write_text('{"modules-left":["clock"]}')
+        result = subprocess.run(['sh', str(app / 'install.sh')], cwd='/',
+                                env=dict(self.env, PATH=str(binaries) + ':' + os.environ['PATH']),
+                                capture_output=True, text=True, timeout=15)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        binary = self.home / '.local/bin/waybar-editor'
+        self.assertTrue(os.access(binary, os.X_OK))
+        entry = self.home / '.local/share/applications/waybar-editor.desktop'
+        self.assertIn(f'Exec="{binary}"', entry.read_text())
+        self.assertEqual(config.read_text(), '{"modules-left":["clock"]}')
+
     def test_both_profiles_from_an_empty_home(self):
         for profile in ('laptop', 'desktop'):
             with self.subTest(profile=profile):

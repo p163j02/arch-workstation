@@ -1,0 +1,21 @@
+.preview-area { padding: 16px 24px 12px; }
+.bar-preview { padding: 8px 4px; min-height: 26px; }
+.preview-zone { padding: 6px 10px; min-height: 26px; }
+.preview-active { padding: 2px 6px; border-radius: 10px; }
+/* GTK's chooser caps its natural scroll viewport; keep alpha controls visible. */
+window.colorchooser scrolledwindow { min-height: 400px; }
+.preview-token { font-family: "Adwaita Sans", "Noto Sans", sans-serif; font-size: 15px; font-weight: 500; }
+.preview-icon { font-family: "JetBrainsMono Nerd Font", monospace; font-weight: normal; }
+.navigation-sidebar { padding: 18px 10px 14px; background-color: alpha(@window_fg_color, 0.025); }
+.navigation-list { background-color: transparent; }
+.navigation-list row { padding: 12px 10px; border-radius: 8px; margin-bottom: 3px; }
+.navigation-list row:selected { background-color: alpha(@accent_bg_color, 0.15); color: @accent_color; }
+.editor-page { padding: 24px 28px 32px; }
+.module-row { padding: 7px 6px; }
+.module-row button { padding: 4px; min-width: 22px; min-height: 24px; }
+.module-row menubutton button { padding: 4px; }
+.empty-zone { padding: 48px 12px; color: alpha(@window_fg_color, 0.65); }
+.status-footer { padding: 12px 20px; }
+.dialog-body { padding: 18px 24px 28px; }
+button.glyph-choice { font-family: "JetBrainsMono Nerd Font", monospace; font-size: 20px; padding: 6px; }
+.warning { color: @warning_color; }
