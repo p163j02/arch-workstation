@@ -1,0 +1,18 @@
+include "/usr/share/nano/*.nanorc"
+include "/usr/share/nano/json.nanorc"
+
+set linenumbers          # mostrar números de línea
+set autoindent           # indentación automática
+set tabsize 4            # tamaño del tab
+set tabstospaces         # convertir tabs a espacios
+set mouse                # soporte de mouse
+set softwrap             # ajuste de línea suave
+set casesensitive        # búsqueda sensible a mayúsculas
+set constantshow         # mostrar posición del cursor siempre
+set boldtext             # texto en negrita en la interfaz
+
+bind ^S savefile main      # Ctrl+S para guardar
+bind ^Z suspend main       # Ctrl+Z para suspender
+bind ^F whereis main       # Ctrl+F para buscar
+bind ^C copy main
+bind ^V paste main

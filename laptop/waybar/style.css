@@ -1,0 +1,310 @@
+* {
+    font-family: "JetBrainsMono Nerd Font", sans-serif;
+    font-size: 13px;
+    font-weight: bold;
+    border: none;
+    border-radius: 0;
+    min-height: 0;
+}
+
+window#waybar {
+    background: transparent;
+}
+
+.modules-left,
+.modules-center,
+.modules-right {
+    /*background-color: #1a1b26;*/
+    background-color: rgba(5, 8, 22, 0.72);
+    /* border: 1px solid #292e42; */
+    /* Borde neón celeste: contorno nítido y resplandor suave. */
+    border: 1px solid #65d9ff;
+    box-shadow: 0 0 6px rgba(101, 217, 255, 0.60), inset 0 0 4px rgba(101, 217, 255, 0.22);
+    border-radius: 20px;
+    margin: 8px 4px;
+    padding: 0 10px;
+}
+
+#workspaces button {
+    padding: 2px 12px;
+    color: #565f89;
+    background: transparent;
+    border-radius: 12px;
+    margin: 4px 2px;
+    font-weight: normal;
+    transition: all 0.15s ease;
+}
+
+#workspaces button:hover {
+    background: #292e42;
+    color: #c0caf5;
+}
+
+#workspaces button.active {
+    background: #3d59a1;
+    color: #c0caf5;
+    font-weight: bold;
+}
+
+#workspaces button.urgent {
+    background: #f7768e;
+    color: #1a1b26;
+}
+
+#custom-newws {
+    color: #565f89;
+    font-size: 15px;
+    padding: 0 6px;
+}
+
+#custom-newws:hover {
+    color: #c0caf5;
+}
+
+#taskbar button {
+    padding: 4px 6px;
+    margin: 4px 1px;
+    background: transparent;
+    border-radius: 10px;
+    transition: all 0.15s ease;
+    border-bottom: 2px solid transparent;
+}
+
+#taskbar button:hover {
+    background: #292e42;
+}
+
+#taskbar button.active {
+    background: #1e2030;
+    border-bottom: 2px solid #7aa2f7;
+}
+
+#clock {
+    color: #c0caf5;
+    font-weight: normal;
+    padding: 0 12px;
+}
+
+#custom-nightlight {
+    font-size: 18px;
+    padding: 0 10px;
+    color: #565f89;
+    transition: all 0.15s ease;
+}
+
+#power-profiles-daemon {
+    padding: 0 10px;
+    font-size: 16px;
+}
+
+#battery {
+    color: #9ece6a;
+    padding: 0 8px;
+}
+
+#battery.warning:not(.charging) {
+    color: #e0af68;
+}
+
+#battery.critical:not(.charging) {
+    color: #f7768e;
+}
+
+#network {
+    color: #7dcfff;
+    padding: 0 8px;
+}
+
+#pulseaudio {
+    color: #bb9af7;
+    padding: 0 8px;
+}
+
+#pulseaudio.muted {
+    color: #565f89;
+}
+
+#bluetooth {
+    color: #7aa2f7;
+    padding: 0 8px;
+}
+
+#tray {
+    padding: 0 8px;
+}
+
+#custom-power {
+    color: #f7768e;
+    padding: 0 10px;
+    font-size: 15px;
+}
+
+#custom-power:hover {
+    color: #ff9e9e;
+}
+
+#cpu {
+    color: #ff9e64;
+    padding: 0 8px;
+}
+
+#memory {
+    color: #9ece6a;
+    padding: 0 8px;
+}
+
+#backlight {
+    color: #e0af68;
+    padding: 0 8px;
+}
+
+
+/* ── App launchers ── */
+#custom-steam,
+#custom-firefox,
+#custom-terminal,
+#custom-files,
+#custom-vscode,
+#custom-chatgpt,
+#custom-claude-code,
+#custom-spotify,
+#custom-wallpaper,
+#custom-zen,
+#custom-antigravity,
+#custom-discord,
+#custom-virtualbox,
+#custom-zed {
+    font-size: 18px;
+    padding: 0 10px;
+    color: #565f89;
+    transition: all 0.15s ease;
+}
+
+
+#custom-wallpaper:hover {
+    color: #bb9af7;
+}
+
+#custom-firefox:hover {
+    color: #ff9e64;
+}
+
+#custom-terminal:hover {
+    color: #c0caf5;
+}
+
+#custom-files:hover {
+    color: #7dcfff;
+}
+
+#custom-vscode:hover {
+    color: #7aa2f7;
+}
+
+#custom-chatgpt:hover {
+    color: #74aa9c;
+}
+
+#custom-claude-code:hover {
+    color: #d97757;
+}
+
+#custom-spotify:hover {
+    color: #9ece6a;
+}
+
+#custom-zen:hover {
+    color: #7dcfff;
+}
+
+#custom-antigravity:hover {
+    color: #7aa2f7;
+}
+
+#custom-discord:hover {
+    color: #5865F2;
+}
+
+#custom-nightlight:hover {
+    color: #ff9e64;
+}
+
+#custom-virtualbox:hover {
+    color: #ff9e64;
+}
+
+#custom-zed:hover {
+    color: #7aa2f7;
+}
+
+#custom-steam:hover {
+    color: #3d59a1
+}
+
+#custom-media {
+    color: #9ece6a;
+    padding: 0 12px;
+    font-size: 13px;
+    font-weight: normal;
+    transition: all 0.15s ease;
+}
+
+#custom-media:hover {
+    color: #c0caf5;
+}
+
+
+#power-profiles-daemon.performance {
+    color: #f7768e;
+}
+
+#power-profiles-daemon.balanced {
+    color: #9ece6a;
+}
+
+#power-profiles-daemon.power-saver {
+    color: #7aa2f7;
+}
+
+#custom-clock {
+    color: #c0caf5;
+    font-weight: normal;
+    padding: 0 12px;
+}
+
+/* Native control center: existing selectors intentionally unchanged. */
+#custom-airpods {
+    color: #7aa2f7;
+    padding: 0 8px;
+    font-weight: normal;
+}
+#custom-airpods.disconnected { color: #565f89; }
+#custom-airpods.connected { color: #9ece6a; }
+#custom-airpods:hover { color: #c0caf5; }
+/* waybar-editor:begin */
+/* waybar-editor:appearance {"background":"rgba(5, 8, 22, 0.72)","foreground":"#c0caf5","module_colors":true,"accent":"#62a0ea","font":"JetBrainsMono Nerd Font","font_size":14.0,"radius":20.0,"padding":10.0,"border":{"color":"#99c1f1","width":0.5,"neon":true,"glow":29.166666666666668}} */
+window#waybar {
+  color: #c0caf5;
+}
+window#waybar,
+window#waybar * {
+  font-family: "JetBrainsMono Nerd Font", sans-serif;
+  font-size: 14px;
+}
+window#waybar .modules-left,
+window#waybar .modules-center,
+window#waybar .modules-right {
+  background: rgba(5, 8, 22, 0.72);
+  border-radius: 20px;
+  border: 0.5px solid #99c1f1;
+  box-shadow: 0 0 6px rgba(153, 193, 241, 0.292), inset 0 0 4px rgba(153, 193, 241, 0.292);
+}
+window#waybar #workspaces button.active {
+  background: #62a0ea;
+  border-radius: 20px;
+}
+window#waybar .module {
+  padding: 0 10px;
+  border-radius: 20px;
+}
+/* waybar-editor:end */

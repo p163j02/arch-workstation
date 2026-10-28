@@ -1,0 +1,15 @@
+[Unit]
+Description=Native Eww Waybar control center (separate from sysmon)
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/eww --force-wayland --no-daemonize -c %h/.config/eww/control-center daemon
+ExecStopPost=%h/.config/eww/control-center/scripts/popup-manager.py cleanup
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=5
+KillMode=control-group
+
+[Install]
+WantedBy=default.target

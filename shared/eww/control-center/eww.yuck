@@ -1,0 +1,75 @@
+;; Isolated from existing desktop sysmon widgets; Eww 0.6 commit d87c2fd.
+(deflisten cc_volume :initial `{"available":false,"percent":0,"mute":false,"mono":false,"sinks":[],"error":"","busy":false}` `scripts/backend.py watch volume`)
+(deflisten cc_wifi :initial `{"available":false,"enabled":false,"ssid":"Sin conexión","status":"","signal":0,"networks":[],"error":"","busy":false,"spinner":"󰑓"}` `scripts/backend.py watch wifi`)
+(deflisten cc_brightness :initial `{"available":false,"percent":0,"device":"—","message":"","error":"","busy":false,"external":{"available":false,"percent":0,"message":"Comprobando DDC/CI…"}}` `scripts/backend.py watch brightness`)
+(deflisten cc_bluetooth :initial `{"available":false,"enabled":false,"status":"","scanning":false,"devices":[],"error":"","busy":false}` `scripts/backend.py watch bluetooth`)
+(deflisten cc_calendar :initial `{"title":"Calendario","weeks":[],"selected":""}` `scripts/calendar_state.py watch`)
+(deflisten cc_airpods :initial `{"name":"AirPods","model":"AirPods","connected":false,"daemon":false,"left":"—","right":"—","case":"—","left_value":0,"right_value":0,"case_value":0,"ear":"No disponible","ear_available":false,"lid":"—","note":"","error":"","battery":"—","address":"","fresh":false}` `scripts/airpods.py --watch`)
+
+(deflisten cc_profiles :initial `{"available":false,"profiles":[],"active":"","degraded":"","error":"","busy":false,"percent":0,"battery_available":false,"battery_status":"Comprobando…","remaining":"Sin estimación"}` `scripts/backend.py watch profiles`)
+(deflisten cc_nightlight :initial `{"available":false,"running":false,"percent":0,"gamma":100,"temperature":6500,"warm":false,"error":"","busy":false}` `scripts/backend.py watch nightlight`)
+(deflisten cc_power :initial `{"available":false,"pending":"","confirmation":"","error":"","busy":false}` `scripts/backend.py watch power`)
+
+(defwidget cc-header [icon title ?settings ?settings_tip]
+  (box :class "cc-header" :space-evenly false :spacing 12
+    (label :text icon :class "cc-icon")
+    (label :text title :class "cc-title" :xalign 0 :hexpand true)
+    (button :class "cc-settings" :visible {settings != ""} :tooltip settings_tip :timeout "5s" :onclick settings "󰒓")
+    (button :class "cc-close" :timeout "5s" :tooltip "Cerrar · Escape" :onclick "scripts/popup-manager.py close" "󰅖")))
+(defwidget cc-section [text]
+  (label :class "cc-section" :text text :xalign 0))
+(defwidget cc-error [text]
+  (label :class "cc-error" :text text :visible {text != ""} :wrap true :show-truncated false :xalign 0))
+(defwidget cc-shell [kind maxheight]
+  (scroll :vscroll true :hscroll false :height maxheight
+    (box :class "cc-panel ${kind}" :orientation "v" :space-evenly false :spacing 14
+      (children))))
+(defwidget cc-static-shell [kind]
+ (box :class "cc-panel ${kind}" :orientation "v" :space-evenly false :spacing 14 (children)))
+(include "widgets/profiles.yuck")
+(include "widgets/nightlight.yuck")
+(include "widgets/power.yuck")
+(include "widgets/volume.yuck")
+(include "widgets/wifi.yuck")
+(include "widgets/brightness.yuck")
+(include "widgets/calendar.yuck")
+(include "widgets/bluetooth.yuck")
+(include "widgets/airpods.yuck")
+
+(defwindow cc-volume [maxheight]
+ :geometry (geometry :width "380px" :height "1px" :anchor "top left")
+ :stacking "overlay" :exclusive false :focusable false :namespace "waybar-control-center"
+ (cc-static-shell :kind "volume" (cc-volume-widget)))
+(defwindow cc-wifi [maxheight]
+ :geometry (geometry :width "380px" :height "1px" :anchor "top left")
+ :stacking "overlay" :exclusive false :focusable false :namespace "waybar-control-center"
+ (cc-shell :kind "wifi" :maxheight maxheight (cc-wifi-widget)))
+(defwindow cc-brightness [maxheight]
+ :geometry (geometry :width "380px" :height "1px" :anchor "top left")
+ :stacking "overlay" :exclusive false :focusable false :namespace "waybar-control-center"
+ (cc-shell :kind "brightness" :maxheight maxheight (cc-brightness-widget)))
+(defwindow cc-calendar [maxheight]
+ :geometry (geometry :width "380px" :height "1px" :anchor "top left")
+ :stacking "overlay" :exclusive false :focusable false :namespace "waybar-control-center"
+ (cc-static-shell :kind "calendar" (cc-calendar-widget)))
+(defwindow cc-bluetooth [maxheight]
+ :geometry (geometry :width "380px" :height "1px" :anchor "top left")
+ :stacking "overlay" :exclusive false :focusable false :namespace "waybar-control-center"
+ (cc-shell :kind "bluetooth" :maxheight maxheight (cc-bluetooth-widget)))
+(defwindow cc-airpods [maxheight]
+ :geometry (geometry :width "420px" :height "1px" :anchor "top left")
+ :stacking "overlay" :exclusive false :focusable false :namespace "waybar-control-center"
+ (cc-shell :kind "airpods" :maxheight maxheight (cc-airpods-widget)))
+
+(defwindow cc-profiles [maxheight]
+ :geometry (geometry :width "380px" :height "1px" :anchor "top left")
+ :stacking "overlay" :exclusive false :focusable false :namespace "waybar-control-center"
+ (cc-static-shell :kind "profiles" (cc-profiles-widget)))
+(defwindow cc-nightlight [maxheight]
+ :geometry (geometry :width "380px" :height "1px" :anchor "top left")
+ :stacking "overlay" :exclusive false :focusable false :namespace "waybar-control-center"
+ (cc-shell :kind "nightlight" :maxheight maxheight (cc-nightlight-widget)))
+(defwindow cc-power [maxheight]
+ :geometry (geometry :width "380px" :height "1px" :anchor "top left")
+ :stacking "overlay" :exclusive false :focusable false :namespace "waybar-control-center"
+ (cc-shell :kind "power" :maxheight maxheight (cc-power-widget)))

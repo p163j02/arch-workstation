@@ -1,0 +1,14 @@
+antigravity
+antigravity-cli
+antigravity-ide
+bibata-cursor-theme
+chatgpt-desktop
+claude-desktop
+eww
+localsend-bin
+spotify
+tokyonight-gtk-theme-git
+visual-studio-code-bin
+waypaper
+wlogout
+zen-browser-bin

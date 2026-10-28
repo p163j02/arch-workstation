@@ -1,0 +1,115 @@
+{
+  "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+
+  "logo": {
+    "type": "kitty",
+    "source": "~/.config/fastfetch/images/bttf.png",
+    "width": 28,
+    "padding": {
+      "top": 2,
+      "right": 3,
+      "left": 2
+    }
+  },
+
+  "display": {
+    "separator": " │ "
+  },
+
+  "modules": [
+    "break",
+
+    {
+      "type": "custom",
+      "format": "╭──────────── ⚡ TIME CIRCUITS ACTIVE ⚡ ───────────╮"
+    },
+
+    {
+      "type": "title",
+      "color": {
+        "user": "cyan",
+        "host": "blue"
+      }
+    },
+
+    {
+      "type": "custom",
+      "format": "├───────────────────────────────────────────────────┤"
+    },
+
+    {
+      "type": "os",
+      "key": "󰣇 OS"
+    },
+
+    {
+      "type": "kernel",
+      "key": "󰒋 Kernel"
+    },
+
+    {
+      "type": "uptime",
+      "key": "󱦟 Uptime"
+    },
+
+    {
+      "type": "packages",
+      "key": "󰏖 Packages"
+    },
+
+    {
+      "type": "shell",
+      "key": "󰆍 Shell"
+    },
+
+    {
+      "type": "terminal",
+      "key": "󰞷 Terminal"
+    },
+
+    {
+      "type": "wm",
+      "key": "󱂬 WM"
+    },
+
+    {
+      "type": "cpu",
+      "key": "󰻠 CPU"
+    },
+
+    {
+      "type": "gpu",
+      "key": "󰢮 GPU"
+    },
+
+    {
+      "type": "memory",
+      "key": "󰍛 Flux Memory"
+    },
+
+    {
+      "type": "disk",
+      "key": "󰋊 Plutonium"
+    },
+
+    {
+      "type": "custom",
+      "format": "├───────────────────────────────────────────────────┤"
+    },
+
+    {
+      "type": "colors",
+      "paddingLeft": 6
+    },
+
+    {
+      "type": "custom",
+      "format": "│ 1.21 GIGAWATTS REQUIRED                           │"
+    },
+
+    {
+      "type": "custom",
+      "format": "╰───────────────────────────────────────────────────╯"
+    }
+  ]
+}

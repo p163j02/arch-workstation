@@ -1,0 +1,21 @@
+(defwidget cc-power-widget []
+ (box :orientation "v" :space-evenly false :spacing 14
+  (cc-header :icon "󰐥" :title "Sesión y apagado")
+  (box :orientation "v" :space-evenly false :spacing 8
+   (box :space-evenly true :spacing 8
+    (button :class "cc-power-option" :timeout "8s" :onclick "scripts/backend.py action power request lock"
+     (box :orientation "v" :spacing 8 (label :class "cc-row-icon" :text "󰌾") (label :text "Bloquear")))
+    (button :class "cc-power-option" :timeout "8s" :onclick "scripts/backend.py action power request logout"
+     (box :orientation "v" :spacing 8 (label :class "cc-row-icon" :text "󰍃") (label :text "Cerrar sesión"))))
+   (box :space-evenly true :spacing 8
+    (button :class "cc-power-option" :timeout "8s" :onclick "scripts/backend.py action power request reboot"
+     (box :orientation "v" :spacing 8 (label :class "cc-row-icon" :text "󰜉") (label :text "Reiniciar")))
+    (button :class "cc-power-option cc-danger" :timeout "8s" :onclick "scripts/backend.py action power request shutdown"
+     (box :orientation "v" :spacing 8 (label :class "cc-row-icon" :text "󰐥") (label :text "Apagar")))))
+  (box :class "cc-footer" :orientation "v" :space-evenly false :spacing 10 :visible {cc_power.pending != ""}
+   (label :text {cc_power.confirmation} :xalign 0)
+   (label :class "cc-secondary" :text "Guarda tu trabajo antes de continuar." :xalign 0)
+   (box :space-evenly true :spacing 8
+    (button :class "cc-preset" :timeout "5s" :onclick "scripts/backend.py action power cancel" "Cancelar")
+    (button :class "cc-disconnect" :timeout "10s" :onclick "scripts/backend.py action power confirm ${cc_power.pending}" "Confirmar")))
+  (cc-error :text {cc_power.error})))

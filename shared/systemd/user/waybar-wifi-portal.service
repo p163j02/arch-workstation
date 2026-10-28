@@ -1,0 +1,16 @@
+[Unit]
+Description=Open Wi-Fi captive portals automatically via NetworkManager
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 %h/.config/eww/control-center/scripts/wifi-portal.py
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=5
+KillMode=control-group
+UMask=0077
+
+[Install]
+WantedBy=default.target

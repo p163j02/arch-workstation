@@ -1,0 +1,21 @@
+(defwidget cc-bluetooth-widget []
+ (box :orientation "v" :space-evenly false :spacing 14
+  (cc-header :icon "󰂯" :title "Bluetooth")
+  (box :space-evenly false :spacing 12
+   (label :text {cc_bluetooth.status} :hexpand true :xalign 0 :limit-width 26)
+   (button :class {cc_bluetooth.enabled ? "cc-toggle on" : "cc-toggle"} :timeout "15s" :active {cc_bluetooth.available && !cc_bluetooth.busy} :onclick "scripts/backend.py action bluetooth toggle" {cc_bluetooth.enabled ? "󰨚" : "󰨙"}))
+  (cc-section :text "Dispositivos conocidos y cercanos")
+  (scroll :height 250 :hscroll false :vscroll true
+   (box :orientation "v" :space-evenly false :spacing 6
+    (for dev in {cc_bluetooth.devices}
+     (box :class {dev.connected ? "cc-current selected" : "cc-current"} :orientation "v" :space-evenly false :spacing 7
+      (box :space-evenly false :spacing 12
+       (label :text {dev.icon} :class "cc-row-icon")
+       (box :orientation "v" :space-evenly false :spacing 4 :hexpand true
+        (label :text {dev.name} :xalign 0 :limit-width 27 :tooltip {dev.name})
+        (label :text "${dev.connected ? 'Conectado' : dev.paired ? 'Vinculado' : 'No vinculado'} · ${dev.battery}" :class {dev.connected ? "cc-green" : "cc-secondary"} :xalign 0)))
+      (box :space-evenly false :spacing 6
+       (button :active {cc_bluetooth.enabled && !cc_bluetooth.busy} :timeout "55s" :onclick "scripts/backend.py action bluetooth ${dev.connected ? 'disconnect' : dev.paired ? 'connect' : 'pair'} ${dev.id}" {dev.connected ? "Desconectar" : dev.paired ? "Conectar" : "Emparejar"})
+       (button :visible {dev.airpods} :timeout "15s" :onclick "scripts/popup-manager.py airpods" "󱡏  AirPods"))))))
+  (button :class "cc-scan" :active {cc_bluetooth.enabled} :timeout "30s" :onclick "scripts/backend.py action bluetooth scan" {cc_bluetooth.scanning ? "󰅖  Detener búsqueda" : "󰐕  Buscar dispositivos (20 s)"})
+  (cc-error :text {cc_bluetooth.error})))

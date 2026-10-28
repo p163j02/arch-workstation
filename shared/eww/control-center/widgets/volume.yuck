@@ -1,0 +1,21 @@
+(defwidget cc-volume-widget []
+ (box :orientation "v" :space-evenly false :spacing 14
+  (cc-header :icon "󰕾" :title "Audio" :settings "python3 scripts/settings-launcher.py volume" :settings_tip "Elegir gestor de audio")
+  (box :space-evenly false :spacing 12
+   (button :class "cc-mute" :timeout "5s" :active {cc_volume.available} :onclick "scripts/backend.py action volume mute" :tooltip "Silenciar / reactivar" {cc_volume.mute ? "󰝟" : "󰕾"})
+   (scale :hexpand true :min 0 :max 100 :value {cc_volume.percent} :active {cc_volume.available} :timeout "5s" :onchange "scripts/backend.py action volume set {}")
+   (label :text "${cc_volume.percent}%" :width 44))
+  (box :space-evenly false :spacing 8
+   (label :text "Canales" :hexpand true :xalign 0)
+   (button :class {cc_volume.mono ? "selected" : "cc-preset"} :active {cc_volume.available && !cc_volume.busy} :timeout "10s" :tooltip "Mezclar izquierda y derecha" :onclick "scripts/backend.py action volume mode mono" "Mono")
+   (button :class {!cc_volume.mono ? "selected" : "cc-preset"} :active {cc_volume.available && !cc_volume.busy} :timeout "10s" :onclick "scripts/backend.py action volume mode stereo" "Estéreo"))
+  (cc-section :text "󰋋  Dispositivo de salida")
+  (box :orientation "v" :space-evenly false
+   (box :orientation "v" :space-evenly false :spacing 2
+    (for sink in {cc_volume.sinks}
+     (button :class {sink.selected ? "cc-device selected" : "cc-device"} :timeout "10s" :onclick "scripts/backend.py action volume sink ${sink.id}"
+      (box :space-evenly false :spacing 12
+       (label :text {sink.icon} :class "cc-row-icon")
+       (label :text {sink.name} :xalign 0 :hexpand true :limit-width 27 :tooltip {sink.name})
+       (label :text {sink.selected ? "󰄯" : "󰄰"} :class "cc-accent"))))))
+  (cc-error :text {cc_volume.error})))

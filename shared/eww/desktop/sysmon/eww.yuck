@@ -1,0 +1,142 @@
+;; Monitor de recursos: RAM como barra y disco con actividad real de E/S.
+(deflisten border_data
+  :initial `{"style":"border: 1px solid rgba(64, 191, 191, 0.500); border-radius: 20px; box-shadow: 0 0 6px rgba(64, 191, 191, 0.300), inset 0 0 4px rgba(64, 191, 191, 0.300);","primary":"#40bfbf","soft":"#83d5d5","text":"#f0fafa","muted":"#a2d0d7","background":"#071118","card":"#142a32","track":"#233d46","separator":"#2a5b61","warning":"#ebcb8b","danger":"#ff7189"}`
+  `python3 ~/.config/eww/scripts/waybar-border.py`)
+(deflisten cpu_data
+  :initial `{"pct":0,"cores":0,"threads":0,"ghz":"—","graph":"","ceiling":100,"status":"…","level":"normal"}`
+  `python3 ~/.config/eww/scripts/cpu-activity.py`)
+(deflisten ram_data
+  :initial `{"ram_used_gb":"0.0","ram_total_gb":"0.0","ram_pct":0,"status":"…","level":"normal"}`
+  `python3 ~/.config/eww/scripts/resource-activity.py ram`)
+(deflisten temp_data
+  :initial `{"cpu":-1,"gpu":-1,"cpu_color":"#8df58a","gpu_color":"#8df58a","cpu_graph":"","gpu_graph":""}`
+  `python3 ~/.config/eww/scripts/temp-history.py`)
+(deflisten disk_data
+  :initial `{"used_gib":"0.00","total_gib":"0.00","pct":0,"fstype":"ext4","graph":"","read_rate":"—","write_rate":"—","device":"—","ceiling":"—","io_status":"Esperando primera muestra","status":"…","level":"normal"}`
+  `python3 ~/.config/eww/scripts/resource-activity.py disk`)
+(defpoll proc_data :interval "3s"
+  :initial `{"cpu0_name":"---","cpu0_pct":"0.0","cpu1_name":"---","cpu1_pct":"0.0","cpu2_name":"---","cpu2_pct":"0.0","cpu3_name":"---","cpu3_pct":"0.0","ram0_name":"---","ram0_mb":0,"ram1_name":"---","ram1_mb":0,"ram2_name":"---","ram2_mb":0,"ram3_name":"---","ram3_mb":0}`
+  `~/.config/eww/scripts/top-procs.sh`)
+
+;; Glifos reales Nerd Fonts, según las especificaciones visuales.
+(defwidget nerd-icon [name size]
+  (label :class "nerd-icon" :width size :height size :xalign 0.5 :yalign 0.5
+    :text {name == 'cpu' ? '' : name == 'frecuencia' ? '' : name == 'disco' ? '' : name == 'ram' ? '' : name == 'temperatura' ? '' : name == 'gpu' ? '' : name == 'top_cpu' ? '' : ''}
+    :style "font-size: ${size * 0.85}px; color: ${border_data.primary};"))
+
+(defwidget section-header [icon title mark]
+  (box :class "section-header" :orientation "h" :space-evenly false :spacing 12
+    (nerd-icon :name icon :size 29)
+    (label :text title :class "section-title" :xalign 0 :hexpand true)
+    (label :text mark :class "section-metric"
+      :style "color: ${(title == 'CPU' && cpu_data.level == 'high') || (title == 'RAM' && ram_data.level == 'high') || (title == 'DISCO' && disk_data.level == 'high') ? border_data.danger : (title == 'CPU' && cpu_data.level == 'elevated') || (title == 'RAM' && ram_data.level == 'elevated') || (title == 'DISCO' && disk_data.level == 'elevated') ? border_data.warning : border_data.primary};")))
+
+(defwidget ram-activity []
+  (box :class "monitor-section ram-activity" :orientation "v" :space-evenly false :spacing 5
+    :style "border-color: ${border_data.separator};"
+    :tooltip "RAM: ${ram_data.status} · ${ram_data.ram_pct}%"
+    (section-header :icon "ram" :title "RAM" :mark "${ram_data.ram_pct}%")
+    (label :text "${ram_data.ram_used_gb} GiB / ${ram_data.ram_total_gb} GiB" :class "metric-details" :xalign 0
+      :style "color: ${border_data.muted};")
+    (box :class "ram-meter" :orientation "h" :space-evenly false :width 304
+      :style "background-color: ${border_data.track};"
+      :tooltip "RAM usada: ${ram_data.ram_pct}% · escala 0–100%"
+      (box :class "ram-fill" :width {round(ram_data.ram_pct * 3.04, 0)} :visible {ram_data.ram_pct > 0}
+        :style "background-color: ${ram_data.level == 'high' ? border_data.danger : ram_data.level == 'elevated' ? border_data.warning : border_data.primary};")
+      (box :hexpand true))))
+
+(defwidget cpu-activity []
+  (box :class "monitor-section cpu-activity" :orientation "v" :space-evenly false :spacing 5
+    :style "border-color: ${border_data.separator};"
+    :tooltip "CPU: ${cpu_data.status} · ${cpu_data.pct}%"
+    (section-header :icon "cpu" :title "CPU" :mark "${cpu_data.pct}%")
+    (box :class "cpu-details metric-details" :orientation "h" :space-evenly false :spacing 7
+      :style "color: ${border_data.muted};"
+      :tooltip "${cpu_data.threads} hilos lógicos · frecuencia media actual"
+      (label :text "${cpu_data.cores > 0 ? cpu_data.cores : cpu_data.threads} ${cpu_data.cores > 0 ? 'núcleos' : 'hilos'}" :xalign 0)
+      (label :text "·")
+      (label :text "${cpu_data.ghz} GHz" :xalign 0))
+    (image :class "cpu-graph" :image-width 304 :image-height 52
+      :path {cpu_data.graph != '' ? cpu_data.graph : '@HOME@/.config/eww/desktop/sysmon/assets/temp-empty.svg'}
+      :tooltip "Uso total real · últimas 60 muestras (2 s) · escala 0–${cpu_data.ceiling}%")))
+
+(defwidget disk-activity []
+  (box :class "monitor-section disk-activity" :orientation "v" :space-evenly false :spacing 5
+    :style "border-color: ${border_data.separator};"
+    :tooltip "Ocupación de /: ${disk_data.status} · ${disk_data.pct}%"
+    (section-header :icon "disco" :title "DISCO" :mark "${disk_data.pct}%")
+    (box :class "metric-details" :orientation "h" :space-evenly false
+      :style "color: ${border_data.muted};"
+      (label :text "${disk_data.used_gib} GiB / ${disk_data.total_gib} GiB" :xalign 0 :hexpand true)
+      (label :text {disk_data.fstype} :class "disk-fstype" :xalign 1))
+    (image :class "disk-graph" :image-width 304 :image-height 48
+      :path {disk_data.graph != '' ? disk_data.graph : '@HOME@/.config/eww/desktop/sysmon/assets/temp-empty.svg'}
+      :tooltip "${disk_data.io_status} · ${disk_data.device} · 60 muestras cada 2 s · escala 0–${disk_data.ceiling}")
+    (label :text "↓ ${disk_data.read_rate}  ↑ ${disk_data.write_rate}" :class "disk-rates" :xalign 0
+      :style "color: ${border_data.muted};"
+      :tooltip "↓ Lecturas · ↑ Escrituras · curva = suma de ambas · disco físico que contiene /")))
+
+(defwidget temp-chip [icon label value color graph]
+  (box :class "temp-chip" :orientation "v" :space-evenly false :spacing 4 :hexpand true
+    :style "background-color: ${border_data.card}; border-color: ${border_data.separator};"
+    :tooltip "${label}: historial real, últimas 24 muestras (5 s por muestra)"
+    (box :orientation "h" :space-evenly false :spacing 8 :halign "center"
+      (nerd-icon :name icon :size 24)
+      (label :text label :class "temp-label"))
+    (label :text {value < 0 ? '—' : '${value}°C'} :class "temp-val"
+      :style "color: ${value > 85 ? border_data.danger : value > 70 ? border_data.warning : border_data.soft};")
+    (image :path {graph != '' ? graph : '@HOME@/.config/eww/desktop/sysmon/assets/temp-empty.svg'} :visible {graph != ''} :class "temp-graph" :image-width 112 :image-height 18)))
+
+(defwidget process-meter [pct color]
+  (box :class "process-meter" :orientation "h" :space-evenly false :hexpand true
+    :style "background-color: ${border_data.track};"
+    (box :class "process-fill" :width {round(pct * 2.74, 0)} :visible {pct > 0}
+      :style "background-color: ${color};")
+    (box :hexpand true)))
+
+(defwidget proc-row [name value unit color]
+  (box :class "proc-row" :orientation "h" :space-evenly false :spacing 10
+    (label :text "" :class "proc-bullet" :width 18 :style "color: ${border_data.soft};")
+    (box :orientation "v" :space-evenly false :spacing 3 :hexpand true
+      (box :orientation "h" :space-evenly false :spacing 4
+        (label :text name :class "proc-name" :hexpand true :xalign 0 :limit-width 17 :tooltip name)
+        (label :text "${value}${unit}" :class "proc-val" :xalign 1 :style "color: ${color};"))
+      (box :tooltip {unit == '%' ? 'CPU por proceso: escala 0–100% de un núcleo (barra limitada a 100%)' : 'RAM: barra relativa al proceso de mayor consumo de esta lista'}
+        (process-meter :pct {unit == '%' ? (value > 100 ? 100 : value) : (value > proc_data.ram0_mb ? 100 : value * 100 / (proc_data.ram0_mb > 0 ? proc_data.ram0_mb : 1))} :color color)))))
+
+(defwidget sysmon []
+  (box :class "sysmon-card" :orientation "v" :space-evenly false :spacing 10
+    :style "${border_data.style} background-color: rgba(7, 17, 24, 0.90); color: ${border_data.text};"
+    (cpu-activity)
+    (disk-activity)
+    (ram-activity)
+    (box :class "monitor-section" :orientation "v" :space-evenly false :spacing 9
+      :style "border-color: ${border_data.separator};"
+      (section-header :icon "temperatura" :title "TEMPERATURA" :mark "")
+      (box :orientation "h" :spacing 10
+        (temp-chip :icon "cpu" :label "CPU" :value {temp_data.cpu} :color {temp_data.cpu_color} :graph {temp_data.cpu_graph})
+        (temp-chip :icon "gpu" :label "GPU" :value {temp_data.gpu} :color {temp_data.gpu_color} :graph {temp_data.gpu_graph})))
+    (box :class "monitor-section" :orientation "v" :space-evenly false :spacing 6
+      :style "border-color: ${border_data.separator};"
+      (section-header :icon "top_cpu" :title "TOP CPU" :mark "")
+      (proc-row :name {proc_data.cpu0_name} :value {proc_data.cpu0_pct} :unit "%" :color {border_data.soft})
+      (proc-row :name {proc_data.cpu1_name} :value {proc_data.cpu1_pct} :unit "%" :color {border_data.soft})
+      (proc-row :name {proc_data.cpu2_name} :value {proc_data.cpu2_pct} :unit "%" :color {border_data.soft})
+      (proc-row :name {proc_data.cpu3_name} :value {proc_data.cpu3_pct} :unit "%" :color {border_data.soft}))
+    (box :class "process-section-last" :orientation "v" :space-evenly false :spacing 6
+      (section-header :icon "top_ram" :title "TOP RAM" :mark "")
+      (proc-row :name {proc_data.ram0_name} :value {proc_data.ram0_mb} :unit " MiB" :color {border_data.soft})
+      (proc-row :name {proc_data.ram1_name} :value {proc_data.ram1_mb} :unit " MiB" :color {border_data.soft})
+      (proc-row :name {proc_data.ram2_name} :value {proc_data.ram2_mb} :unit " MiB" :color {border_data.soft})
+      (proc-row :name {proc_data.ram3_name} :value {proc_data.ram3_mb} :unit " MiB" :color {border_data.soft}))))
+
+(defwindow sysmon-widget
+  :monitor 0
+  :geometry (geometry :x "12px" :y "25px" :width "352px" :anchor "top right")
+  :stacking "bottom" :exclusive false :focusable false
+  (sysmon))
+(defwindow sysmon-widget-ext
+  :monitor 1
+  :geometry (geometry :x "12px" :y "25px" :width "352px" :anchor "top right")
+  :stacking "bottom" :exclusive false :focusable false
+  (sysmon))

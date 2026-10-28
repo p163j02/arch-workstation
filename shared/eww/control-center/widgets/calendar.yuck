@@ -1,0 +1,18 @@
+(defwidget cc-calendar-widget []
+ (box :orientation "v" :space-evenly false :spacing 14
+  (cc-header :icon "󰃭" :title "Calendario")
+  (box :space-evenly false :spacing 8
+   (button :timeout "5s" :onclick "scripts/calendar_state.py action prev" "󰅁")
+   (label :text {cc_calendar.title} :hexpand true :class "cc-title")
+   (button :timeout "5s" :onclick "scripts/calendar_state.py action next" "󰅂"))
+  (box :space-evenly true
+   (for day in `["L","M","M","J","V","S","D"]`
+    (label :text day :class "cc-weekday")))
+  (box :orientation "v" :space-evenly false :spacing 4
+   (for week in {cc_calendar.weeks}
+    (box :space-evenly true :spacing 2
+     (for day in week
+      (button :class "cc-day ${day.current ? '' : 'outside'} ${day.weekend ? 'weekend' : ''} ${day.today ? 'today' : ''} ${day.selected ? 'selected' : ''}" :timeout "5s" :onclick "scripts/calendar_state.py action select ${day.id}" "${day.day}")))))
+  (box :class "cc-footer" :orientation "v" :space-evenly false :spacing 10
+   (button :halign "start" :class "cc-accent" :timeout "5s" :onclick "scripts/calendar_state.py action today" "Hoy")
+   (label :text "󰃭  ${cc_calendar.selected}" :wrap true :xalign 0 :limit-width 37))))

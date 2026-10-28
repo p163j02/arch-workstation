@@ -1,0 +1,53 @@
+$bg: rgba(26, 27, 38, .96);
+$fg: #c0caf5;
+$muted: #9aa5ce;
+$blue: #7aa2f7;
+* { all: unset; font-family: "JetBrainsMono Nerd Font"; font-size: 13px; }
+window { background: transparent; color: $fg; }
+.cc-panel { background: $bg; border: 1px solid rgba(122,162,247,.4); border-radius: 15px; padding: 20px; }
+.cc-header { padding-bottom: 12px; border-bottom: 1px solid #292e42; }
+.cc-title { font-size: 16px; font-weight: bold; }
+.cc-icon { font-size: 24px; color: $blue; }
+.cc-section { color: $muted; font-size: 12px; margin-top: 2px; }
+.cc-accent, .cc-toggle.on { color: $blue; }
+.cc-secondary { color: $muted; font-size: 12px; }
+.cc-green { color: #9ece6a; }
+.cc-battery-pill { background: rgba(158,206,106,.15); color: #9ece6a; border-radius: 24px; padding: 12px 16px; font-size: 22px; font-weight: bold; }
+.cc-error { color: #e0af68; font-size: 11px; padding-top: 5px; }
+button { padding: 7px 10px; border-radius: 8px; transition: background-color 120ms ease; }
+button:hover { background: #292e42; }
+button:active { background: #3d59a1; }
+button:disabled { color: #565f89; }
+.cc-close { color: $muted; padding: 4px 7px; }
+.cc-row-icon { color: $blue; font-size: 20px; }
+.cc-mute { color: #bb9af7; font-size: 24px; padding: 2px; }
+.cc-toggle { font-size: 26px; padding: 0 4px; color: #565f89; }
+.cc-current { background: rgba(41,46,66,.42); border-radius: 10px; padding: 12px; }
+.selected { background: rgba(122,162,247,.14); color: $blue; }
+.cc-preset { background: #24283b; }
+.cc-footer { border-top: 1px solid #292e42; padding-top: 12px; }
+.cc-scan { color: $blue; border: 1px solid #414868; }
+.cc-disconnect { color: #f7768e; border: 1px solid rgba(247,118,142,.3); }
+scale { min-height: 24px; }
+scale trough, progressbar trough { background: #414868; border-radius: 8px; min-height: 7px; }
+scale highlight { background: #bb9af7; border-radius: 8px; }
+.brightness scale highlight, .nightlight scale highlight { background: #e0af68; }
+.cc-spinner { color: $blue; font-size: 18px; min-width: 22px; }
+.cc-power-option { background: #24283b; padding: 18px 8px; }
+.cc-danger, .cc-danger .cc-row-icon { color: #f7768e; }
+.profiles .cc-device { padding: 12px 6px; }
+scale slider { background: $fg; border-radius: 50%; min-width: 14px; min-height: 14px; margin: -4px; }
+progressbar trough { min-width: 60px; }
+progressbar progress { background: #9ece6a; min-width: 0; min-height: 7px; border-radius: 8px; }
+scrollbar { min-width: 4px; }
+scrollbar slider { background: #414868; border-radius: 4px; min-height: 25px; }
+.cc-weekday { color: $muted; padding: 5px; }
+.cc-day { min-height: 24px; padding: 4px 2px; }
+.cc-day.weekend { color: #bb9af7; }
+.cc-day.outside { color: #565f89; }
+.cc-day.today { border: 1px solid $blue; }
+.cc-day.selected { background: #3d59a1; color: $fg; }
+.cc-airpods-image { font-size: 64px; color: $fg; }
+.cc-pod-icon { font-size: 30px; color: $fg; }
+.cc-pod-battery label { font-size: 11px; }
+.cc-pod-battery { padding: 12px 5px; background: rgba(41,46,66,.35); border-radius: 10px; }

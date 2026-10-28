@@ -1,0 +1,308 @@
+{
+  "layer": "top",
+  "output": "*",
+  "position": "top",
+  "height": 40,
+  "margin-top": 0,
+  "margin-left": 8,
+  "margin-right": 8,
+  "spacing": 0,
+  "modules-left": ["hyprland/workspaces"],
+  "modules-center": ["custom/virtualbox","custom/zen","custom/firefox","custom/terminal","custom/chatgpt","custom/claude-code","custom/discord","custom/steam","custom/files","custom/zed","custom/vscode","custom/antigravity","custom/spotify","custom/wallpaper"],
+  "modules-right": ["custom/media","tray","network","pulseaudio","power-profiles-daemon","custom/nightlight","custom/power","custom/clock"],
+  "hyprland/workspaces": {
+    "format": "{icon} {windows}",
+    "format-window-separator": " ",
+    "on-click": "activate",
+    "window-rewrite-default": "󰣆",
+    "window-rewrite": {
+      "class<code(-oss)?>": "󰨞",
+      "class<firefox>": "󰈹",
+      "class<firefox> title<.*[Yy]ou[Tt]ube.*>": "󰗃",
+      "class<firefox> title<.*[Gg]it[Hh]ub.*>": "\uf09b",
+      "class<zen>": "󰖟",
+      "class<zen> title<.*[Yy]ou[Tt]ube.*>": "󰗃",
+      "class<zen> title<.*[Gg]it[Hh]ub.*>": "\uf09b",
+      "class<kitty>": "󱃾",
+      "class<Alacritty>": "",
+      "class<foot>": "",
+      "class<discord>": "󰙯",
+      "class<vesktop>": "󰙯",
+      "class<Spotify>": "󰓇",
+      "class<spotify>": "󰓇",
+      "class<org.gnome.Nautilus>": "󰉋",
+      "class<thunar>": "󰉋",
+      "class<VirtualBox>": "",
+      "class<virt-manager>": "󰢹",
+      "class<zed>": "󰅩",
+      "class<dev.zed.Zed>": "󰅩",
+      "class<antigravity.*>": "󰛄",
+      "class<antigravity-ide>": "󰛄",
+      "class<obs>": "󰐔",
+      "class<mpv>": "󰎁",
+      "class<vlc>": "󰕼",
+      "class<gimp.*>": "󰽢",
+      "class<inkscape>": "󰔉",
+      "class<steam>": "󰓓",
+      "class<lutris>": "󰺵",
+      "class<pavucontrol>": "󰕾",
+      "class<blueman.*>": "󰂯",
+      "class<imv>": "󰋩",
+      "class<localsend>": "󰒍",
+      "class<LocalSend>": "󰒍",
+      "class<timeshift-gtk>": "󰁯",
+      "class<nwg-displays>": "󰍹",
+      "class<nwg-look>": "󰔴",
+      "class<waypaper>": "󰸉",
+      "class<org.gnome.Calendar>": "󰃭",
+      "class<org.gnome.Loupe>": "󰋩",
+      "class<Loupe>": "󰋩",
+      "class<nm-connection-editor>": "󰒢",
+      "class<iwgtk>": "󰖩"
+    },
+    "format-icons": {
+      "1": "1",
+      "2": "2",
+      "3": "3",
+      "4": "4",
+      "5": "5",
+      "6": "6",
+      "7": "α",
+      "8": "β",
+      "9": "γ",
+      "10": "δ",
+      "11": "ε",
+      "12": "ζ",
+      "default": ""
+    },
+    "persistent-workspaces": {
+      "1": [],
+      "2": [],
+      "3": [],
+      "4": [],
+      "5": [],
+      "6": [],
+      "7": [],
+      "8": [],
+      "9": [],
+      "10": [],
+      "11": [],
+      "12": []
+    }
+  },
+  "custom/newws": {
+    "format": "+",
+    "on-click": "hyprctl dispatch workspace e+1",
+    "tooltip": false
+  },
+  "custom/firefox": {
+    "format": "󰈹",
+    "on-click": "~/.config/hypr/launch-in-workspace.py firefox",
+    "tooltip-format": "Firefox"
+  },
+  "custom/terminal": {
+    "format": "",
+    "on-click": "~/.config/hypr/launch-in-workspace.py kitty",
+    "tooltip-format": "Terminal"
+  },
+  "custom/chatgpt": {
+    "format": "",
+    "on-click": "~/.config/hypr/launch-in-workspace.py chatgpt",
+    "tooltip-format": "ChatGPT"
+  },
+  "custom/claude-code": {
+    "format": "󰛄",
+    "on-click": "~/.config/hypr/launch-in-workspace.py claude-desktop",
+    "tooltip-format": "Claude Code"
+  },
+  "custom/files": {
+    "format": "󰉋",
+    "on-click": "~/.config/hypr/launch-in-workspace.py nautilus",
+    "tooltip-format": "Archivos"
+  },
+  "custom/steam": {
+    "format": "",
+    "on-click": "~/.config/hypr/launch-in-workspace.py steam",
+    "tooltip-format": "Steam"
+  },
+  "custom/vscode": {
+    "format": "󰨞",
+    "on-click": "~/.config/hypr/launch-in-workspace.py code",
+    "tooltip-format": "VS Code"
+  },
+  "custom/spotify": {
+    "format": "󰓇",
+    "on-click": "~/.config/hypr/launch-in-workspace.py spotify",
+    "tooltip-format": "Spotify"
+  },
+  "custom/power": {
+    "format": "⏻",
+    "on-click": "~/.config/eww/control-center/scripts/popup-manager.py power",
+    "tooltip": false
+  },
+  "custom/wallpaper": {
+    "format": "󰸉",
+    "on-click": "~/.config/hypr/launch-in-workspace.py waypaper",
+    "tooltip-format": "Wallpaper"
+  },
+  "custom/zen": {
+    "format": "󰖟",
+    "on-click": "~/.config/hypr/launch-in-workspace.py zen-browser",
+    "tooltip-format": "Zen Browser"
+  },
+  "custom/antigravity": {
+    "format": "✶",
+    "on-click": "~/.config/hypr/launch-in-workspace.py antigravity-ide",
+    "tooltip-format": "Antigravity"
+  },
+  "custom/discord": {
+    "format": "",
+    "on-click": "~/.config/hypr/launch-in-workspace.py discord",
+    "tooltip-format": "Discord"
+  },
+  "custom/nightlight": {
+    "format": "{}",
+    "exec": "echo '󰛨'",
+    "on-click": "~/.config/eww/control-center/scripts/popup-manager.py nightlight",
+    "tooltip-format": "Atenuador / luz nocturna",
+    "interval": "once",
+    "signal": 1
+  },
+  "custom/media": {
+    "exec": "~/.config/waybar/scripts/media-status.sh",
+    "on-click": "~/.config/waybar/scripts/media-popup.sh",
+    "interval": 2,
+    "return-type": "json",
+    "format": "{}",
+    "tooltip": true
+  },
+  "custom/virtualbox": {
+    "format": "",
+    "on-click": "~/.config/hypr/launch-in-workspace.py virtualbox",
+    "tooltip-format": "Virtualbox"
+  },
+  "custom/zed": {
+    "format": "󰅩",
+    "on-click": "~/.config/hypr/launch-in-workspace.py zed",
+    "tooltip-format": "Zed"
+  },
+  "backlight": {
+    "format": "{icon} {percent}%",
+    "format-icons": [
+      "󰃞",
+      "󰃟",
+      "󰃠"
+    ],
+    "on-click": "~/.config/eww/control-center/scripts/popup-manager.py brightness",
+    "on-scroll-up": "~/.config/eww/control-center/scripts/backend.py action brightness step 5",
+    "on-scroll-down": "~/.config/eww/control-center/scripts/backend.py action brightness step -5",
+    "tooltip": false
+  },
+  "cpu": {
+    "format": "󰻠 {usage}%",
+    "tooltip-format": "CPU: {usage}%",
+    "interval": 2
+  },
+  "memory": {
+    "format": "󰍛 {percentage}%",
+    "tooltip-format": "{used:0.1f}GB usados de {total:0.1f}GB",
+    "interval": 2
+  },
+  // Original
+  // "clock": {
+  //     "locale": "es_CL.utf8",
+  //     "format": "{:%a %d %b  %H:%M}",
+  //     "tooltip-format": "<tt><small>{calendar}</small></tt>"
+  // },
+  // "clock": {
+  //     "format": "{:%a %d %b  %H:%M}",
+  //     "format-alt": "{:%d/%m/%Y}",
+  //     "tooltip-format": "<tt><small>{calendar}</small></tt>",
+  //     "locale": "es_CL.UTF-8"
+  // },
+  "custom/clock": {
+    "exec": "~/.config/waybar/scripts/clock.py",
+    "on-click": "~/.config/eww/control-center/scripts/popup-manager.py calendar",
+    "interval": 60,
+    "format": "{}",
+    "tooltip": false
+  },
+  "battery": {
+    "on-click": "~/.config/eww/control-center/scripts/popup-manager.py profiles",
+    "states": {
+      "warning": 30,
+      "critical": 15
+    },
+    "format": "{icon} {capacity}%",
+    "format-charging": "󰂄 {capacity}%",
+    "format-plugged": " {capacity}%",
+    "format-icons": [
+      "󰂎",
+      "󰁺",
+      "󰁻",
+      "󰁼",
+      "󰁽",
+      "󰁾",
+      "󰁿",
+      "󰂀",
+      "󰂁",
+      "󰂂",
+      "󰁹"
+    ]
+  },
+  "network": {
+    "format-wifi": "{icon}",
+    "format-icons": ["󰤟", "󰤢", "󰤥", "󰤨"],
+    "format-ethernet": "󰈀 LAN",
+    "format-disconnected": "󰤭",
+    "tooltip-format": "{ipaddr} — {signalStrength}%",
+    "tooltip-format-wifi": "{essid} — {signalStrength}%",
+    "on-click": "~/.config/eww/control-center/scripts/popup-manager.py wifi"
+  },
+  "pulseaudio": {
+    "format": "{icon} {volume}%",
+    "format-muted": "󰝟",
+    "format-icons": {
+      "default": [
+        "󰕿",
+        "󰖀",
+        "󰕾"
+      ]
+    },
+    "on-click": "~/.config/eww/control-center/scripts/popup-manager.py volume",
+    "on-click-right": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
+    "on-scroll-up": "wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+",
+    "on-scroll-down": "wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%-"
+  },
+  "bluetooth": {
+    "format": "󰂯",
+    "format-connected": "󰂱",
+    "format-disabled": "󰂲",
+    "tooltip-format": "{controller_alias} — {num_connections} dispositivos",
+    "on-click": "~/.config/eww/control-center/scripts/popup-manager.py bluetooth"
+  },
+  "custom/airpods": {
+    "exec": "~/.config/eww/control-center/scripts/airpods.py --waybar --watch",
+    "return-type": "json",
+    "format": "{}",
+    "restart-interval": 5,
+    "escape": false,
+    "tooltip": true,
+    "on-click": "~/.config/eww/control-center/scripts/popup-manager.py airpods"
+  },
+  "power-profiles-daemon": {
+    "format": "{icon}",
+    "tooltip-format": "Perfil: {profile}",
+    "on-click": "~/.config/eww/control-center/scripts/popup-manager.py profiles",
+    "format-icons": {
+      "default": "󰾅",
+      "performance": "󰓅",
+      "balanced": "󰾅",
+      "power-saver": "󰌪"
+    }
+  },
+  "tray": {
+    "icon-size": 16,
+    "spacing": 8
+  }
+}
