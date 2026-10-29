@@ -1,0 +1,39 @@
+(defwidget cc-pod-battery [icon title text value]
+ (box :class "cc-pod-battery" :orientation "v" :space-evenly false :spacing 8 :hexpand true
+  (label :text icon :class "cc-pod-icon")
+  (label :text title :class "cc-secondary")
+  (progress :value value :visible {text != "—"})
+  (label :text text :wrap true :class "cc-green")))
+(defwidget cc-airpods-widget []
+ (box :orientation "v" :space-evenly false :spacing 16
+  (cc-header :icon "󱡏" :title "AirPods")
+  (box :space-evenly false :spacing 16
+   (label :text "󱡏" :class "cc-airpods-image")
+   (box :orientation "v" :space-evenly false :spacing 6 :hexpand true
+    (label :text {cc_airpods.name} :xalign 0 :class "cc-title" :limit-width 26 :tooltip {cc_airpods.name})
+    (label :text {cc_airpods.model} :class "cc-secondary" :xalign 0 :limit-width 27)
+    (label :text {cc_airpods.connected ? "● Conectados" : "○ Desconectados"} :class {cc_airpods.connected ? "cc-green" : "cc-secondary"} :xalign 0)))
+  (box :space-evenly true :spacing 8
+   (cc-pod-battery :icon "󱡏" :title "Izquierdo" :text {cc_airpods.left} :value {cc_airpods.left_value})
+   (cc-pod-battery :icon "󱡏" :title "Derecho" :text {cc_airpods.right} :value {cc_airpods.right_value})
+   (cc-pod-battery :icon "󰁹" :title "Estuche" :text {cc_airpods.case} :value {cc_airpods.case_value}))
+  (box :class "cc-footer" :space-evenly false :spacing 12
+   (label :text "󰂯  Estado de conexión" :hexpand true :xalign 0)
+   (label :text {cc_airpods.connected ? "Conectados" : "Desconectados"} :class {cc_airpods.connected ? "cc-green" : "cc-secondary"}))
+  (box :space-evenly false :spacing 12
+   (label :text "󱄡  Detección de oído" :hexpand true :xalign 0)
+   (label :text {cc_airpods.ear} :class "cc-secondary"))
+  (cc-section :text "󰕾  Dispositivo de salida")
+  (box :orientation "v" :space-evenly false :spacing 4
+   (for sink in {cc_volume.sinks}
+    (button :class {sink.selected ? "cc-device selected" : "cc-device"} :timeout "10s" :onclick "scripts/backend.py action volume sink ${sink.id}"
+     (box :space-evenly false :spacing 10
+      (label :text {sink.icon})
+      (label :text {sink.display} :hexpand true :xalign 0 :limit-width 27 :tooltip {sink.name})
+      (label :text {sink.selected ? "󰄯" : "󰄰"})))))
+  (box :space-evenly true :spacing 10
+   (button :class "cc-disconnect" :timeout "55s" :onclick "scripts/backend.py action bluetooth ${cc_airpods.connected ? 'disconnect' : 'connect'} ${cc_airpods.address}" {cc_airpods.connected ? "󰌺 Desconectar" : "󰌷 Conectar"})
+   (button :timeout "15s" :onclick "scripts/popup-manager.py bluetooth" "󰂯 Bluetooth"))
+  (cc-error :text {cc_bluetooth.error})
+  (label :text {cc_airpods.note} :visible {cc_airpods.note != ""} :wrap true :show-truncated false :class "cc-secondary" :xalign 0)
+  (cc-error :text {cc_airpods.error})))

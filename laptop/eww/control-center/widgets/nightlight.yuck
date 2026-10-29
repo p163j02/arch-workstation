@@ -1,0 +1,21 @@
+(defwidget cc-nightlight-widget []
+ (box :orientation "v" :space-evenly false :spacing 14
+  (cc-header :icon "󰛨" :title "Atenuador de pantalla")
+  (box :space-evenly false :spacing 12
+   (label :class "cc-row-icon" :text "󰛩")
+   (scale :hexpand true :min 0 :max 80 :value {cc_nightlight.percent} :active {cc_nightlight.available} :timeout "8s" :onchange "scripts/backend.py action nightlight set {}")
+   (label :width 44 :text "${cc_nightlight.percent}%"))
+  (box :space-evenly true :spacing 8
+   (button :class "cc-preset" :timeout "8s" :onclick "scripts/backend.py action nightlight set 0" "0%")
+   (button :class "cc-preset" :timeout "8s" :onclick "scripts/backend.py action nightlight set 25" "25%")
+   (button :class "cc-preset" :timeout "8s" :onclick "scripts/backend.py action nightlight set 50" "50%")
+   (button :class "cc-preset" :timeout "8s" :onclick "scripts/backend.py action nightlight set 75" "75%"))
+  (box :orientation "v" :space-evenly false :spacing 4
+   (label :class "cc-secondary" :xalign 0 :text "Gamma en todas las pantallas.")
+   (label :class "cc-secondary" :xalign 0 :text "No cambia el backlight."))
+  (box :class "cc-footer" :space-evenly false :spacing 12
+   (box :orientation "v" :space-evenly false :spacing 4 :hexpand true
+    (label :text "Luz nocturna" :xalign 0)
+    (label :class "cc-secondary" :text {cc_nightlight.warm ? "${cc_nightlight.temperature} K · cálida" : "Color neutro"} :xalign 0))
+   (button :class {cc_nightlight.warm ? "cc-toggle on" : "cc-toggle"} :timeout "8s" :active {cc_nightlight.available} :onclick "scripts/backend.py action nightlight warm" {cc_nightlight.warm ? "󰨚" : "󰨙"}))
+  (cc-error :text {cc_nightlight.error})))

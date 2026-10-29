@@ -1,0 +1,488 @@
+:root {
+  --cc-bg: rgba(5, 8, 22, 0.90);
+  --noti-border-color: rgba(74, 141, 183, 0.20);
+  --noti-bg: 13, 17, 35;
+  --noti-bg-alpha: 0.88;
+  --noti-bg-darker: rgb(5, 8, 22);
+  --noti-bg-hover: rgba(46, 109, 164, 0.10);
+  --noti-bg-focus: rgba(46, 109, 164, 0.14);
+  --noti-close-bg: rgba(46, 109, 164, 0.14);
+  --noti-close-bg-hover: rgba(74, 141, 183, 0.24);
+  --text-color: rgb(169, 201, 232);
+  --text-color-disabled: rgb(74, 141, 183);
+  --bg-selected: rgb(46, 109, 164);
+  --notification-icon-size: 48px;
+  --notification-app-icon-size: calc(var(--notification-icon-size) / 3);
+  --notification-group-icon-size: 28px;
+  --border: 1px solid var(--noti-border-color);
+  --border-radius: 8px;
+  --accent: rgb(74, 141, 183);
+  --accent-bright: rgb(169, 201, 232);
+  --accent-red: rgba(224, 108, 117, 0.8);
+  --accent-green: rgba(77, 154, 122, 0.8);
+  --notification-shadow:
+    0 0 0 1px rgba(46, 109, 164, 0.10),
+    0 2px 14px rgba(5, 8, 22, 0.85),
+    0 0 24px rgba(46, 109, 164, 0.06);
+  --font-size-body: 13px;
+  --font-size-summary: 14px;
+  --hover-tranistion: background 0.15s ease-in-out;
+  --group-collapse-tranistion: opacity 400ms ease-in-out;
+  --hover-transition: var(--hover-tranistion);
+  --group-collapse-transition: var(--group-collapse-tranistion);
+}
+
+@define-color cc-bg rgba(5, 8, 22, 0.90);
+@define-color noti-border-color rgba(74, 141, 183, 0.20);
+@define-color noti-bg rgba(13, 17, 35, 0.88);
+@define-color noti-bg-opaque rgb(13, 17, 35);
+@define-color noti-bg-darker rgb(5, 8, 22);
+@define-color noti-bg-hover rgba(46, 109, 164, 0.10);
+@define-color noti-bg-hover-opaque rgb(18, 24, 46);
+@define-color noti-bg-focus rgba(46, 109, 164, 0.14);
+@define-color noti-close-bg rgba(46, 109, 164, 0.14);
+@define-color noti-close-bg-hover rgba(74, 141, 183, 0.24);
+@define-color text-color rgb(169, 201, 232);
+@define-color text-color-disabled rgb(74, 141, 183);
+@define-color bg-selected rgb(46, 109, 164);
+
+notificationwindow, blankwindow {
+  background: transparent;
+}
+
+.close-button {
+  background: var(--noti-close-bg);
+  color: var(--accent);
+  text-shadow: none;
+  padding: 0;
+  border-radius: 100%;
+  margin-top: 8px;
+  margin-right: 8px;
+  box-shadow: none;
+  border: 1px solid rgba(74, 141, 183, 0.18);
+  min-width: 22px;
+  min-height: 22px;
+}
+
+.close-button:hover {
+  box-shadow: none;
+  background: var(--noti-close-bg-hover);
+  transition: var(--hover-tranistion);
+  border: 1px solid rgba(74, 141, 183, 0.35);
+}
+
+.notification-row {
+  background: none;
+  outline: none;
+}
+
+.notification-row:focus {
+  background: var(--noti-bg-focus);
+}
+
+.notification-row .notification-background {
+  padding: 4px 10px;
+}
+
+.notification-row .notification-background .notification {
+  border-radius: var(--border-radius);
+  border-left: 2px solid rgba(74, 141, 183, 0.55);
+  border-top: var(--border);
+  border-right: var(--border);
+  border-bottom: var(--border);
+  padding: 0;
+  transition: var(--hover-tranistion);
+  background: rgba(var(--noti-bg), var(--noti-bg-alpha));
+}
+
+.notification-row .notification-background .notification.low {
+  border-left: 2px solid rgba(74, 141, 183, 0.25);
+}
+
+.notification-row .notification-background .notification.normal {
+  border-left: 2px solid rgba(74, 141, 183, 0.55);
+}
+
+.notification-row .notification-background .notification.critical {
+  border-left: 2px solid rgba(224, 108, 117, 0.85);
+  border-top: 1px solid rgba(224, 108, 117, 0.18);
+  border-right: 1px solid rgba(224, 108, 117, 0.18);
+  border-bottom: 1px solid rgba(224, 108, 117, 0.18);
+}
+
+.notification-row .notification-background .notification .notification-default-action {
+  padding: 4px;
+  margin: 0;
+  box-shadow: none;
+  background: transparent;
+  border: none;
+  color: var(--text-color);
+  transition: var(--hover-tranistion);
+  border-radius: var(--border-radius);
+}
+
+.notification-row .notification-background .notification .notification-default-action:hover {
+  -gtk-icon-filter: none;
+  background: var(--noti-bg-hover);
+}
+
+.notification-row .notification-background .notification .notification-default-action:not(:only-child) {
+  border-bottom-left-radius: 0px;
+  border-bottom-right-radius: 0px;
+}
+
+.notification-row .notification-background .notification .notification-default-action .notification-content {
+  background: transparent;
+  border-radius: var(--border-radius);
+  padding: 0;
+}
+
+.notification-row .notification-background .notification .notification-default-action .notification-content .image {
+  -gtk-icon-filter: none;
+  -gtk-icon-size: var(--notification-icon-size);
+  border-radius: 6px;
+  margin: 6px;
+}
+
+.notification-row .notification-background .notification .notification-default-action .notification-content .app-icon {
+  -gtk-icon-filter: none;
+  -gtk-icon-size: var(--notification-app-icon-size);
+  -gtk-icon-shadow: 0 1px 4px rgba(5, 8, 22, 0.9);
+  margin: 6px;
+}
+
+.notification-row .notification-background .notification .notification-default-action .notification-content .text-box label {
+  filter: none;
+}
+
+.notification-row .notification-background .notification .notification-default-action .notification-content .text-box .summary {
+  font-size: var(--font-size-summary);
+  font-weight: bold;
+  background: transparent;
+  color: rgb(169, 201, 232);
+  text-shadow: none;
+}
+
+.notification-row .notification-background .notification .notification-default-action .notification-content .text-box .time {
+  font-size: 11px;
+  font-weight: normal;
+  background: transparent;
+  color: rgba(74, 141, 183, 0.7);
+  text-shadow: none;
+  margin-right: 28px;
+}
+
+.notification-row .notification-background .notification .notification-default-action .notification-content .text-box .body {
+  font-size: var(--font-size-body);
+  font-weight: normal;
+  background: transparent;
+  color: rgb(136, 153, 170);
+  text-shadow: none;
+}
+
+.notification-row .notification-background .notification .notification-default-action .notification-content progressbar {
+  margin-top: 4px;
+}
+
+.notification-row .notification-background .notification .notification-default-action .notification-content .body-image {
+  margin-top: 4px;
+  background-color: transparent;
+  -gtk-icon-filter: none;
+}
+
+.notification-row .notification-background .notification .notification-default-action .notification-content .inline-reply {
+  margin-top: 4px;
+}
+
+.notification-row .notification-background .notification .notification-default-action .notification-content .inline-reply .inline-reply-entry {
+  background: var(--noti-bg-darker);
+  color: var(--text-color);
+  caret-color: var(--accent);
+  border: var(--border);
+  border-radius: var(--border-radius);
+}
+
+.notification-row .notification-background .notification .notification-default-action .notification-content .inline-reply .inline-reply-button {
+  margin-left: 4px;
+  background: rgba(var(--noti-bg), var(--noti-bg-alpha));
+  border: var(--border);
+  border-radius: var(--border-radius);
+  color: var(--accent);
+}
+
+.notification-row .notification-background .notification .notification-default-action .notification-content .inline-reply .inline-reply-button:disabled {
+  background: initial;
+  color: var(--text-color-disabled);
+  border: var(--border);
+  border-color: transparent;
+}
+
+.notification-row .notification-background .notification .notification-default-action .notification-content .inline-reply .inline-reply-button:hover {
+  background: var(--noti-bg-hover);
+}
+
+.notification-row .notification-background .notification .notification-alt-actions {
+  background: none;
+  border-bottom-left-radius: var(--border-radius);
+  border-bottom-right-radius: var(--border-radius);
+  padding: 4px;
+}
+
+.notification-row .notification-background .notification .notification-action {
+  margin: 4px;
+  padding: 0;
+}
+
+.notification-row .notification-background .notification .notification-action > button {
+  border-radius: var(--border-radius);
+  color: var(--accent);
+  background: rgba(46, 109, 164, 0.08);
+  border: 1px solid rgba(74, 141, 183, 0.18);
+}
+
+.notification-group {
+  transition: opacity 200ms ease-in-out;
+}
+
+.notification-group:focus {
+  background: var(--noti-bg-focus);
+}
+
+.notification-group .notification-group-close-button .close-button {
+  margin: 10px 18px;
+}
+
+.notification-group .notification-group-buttons,
+.notification-group .notification-group-headers {
+  margin: 0 14px;
+  color: var(--text-color);
+}
+
+.notification-group .notification-group-headers .notification-group-icon {
+  color: var(--accent);
+  -gtk-icon-size: var(--notification-group-icon-size);
+}
+
+.notification-group .notification-group-headers .notification-group-header {
+  color: rgb(169, 201, 232);
+}
+
+.notification-group.collapsed.not-expanded {
+  opacity: 0.4;
+}
+
+.notification-group.collapsed .notification-row .notification {
+  background-color: rgba(var(--noti-bg), 1);
+}
+
+.notification-group.collapsed .notification-row:not(:last-child) .notification-action,
+.notification-group.collapsed .notification-row:not(:last-child) .notification-default-action {
+  opacity: 0;
+}
+
+.notification-group.collapsed:hover .notification-row:not(:only-child) .notification {
+  background-color: var(--noti-bg-hover);
+}
+
+.control-center {
+  background: var(--cc-bg);
+  color: var(--text-color);
+  border-radius: 10px;
+  border-left: 1px solid rgba(74, 141, 183, 0.18);
+  border-top: 1px solid rgba(74, 141, 183, 0.12);
+  border-right: 1px solid rgba(5, 8, 22, 0.6);
+  border-bottom: 1px solid rgba(5, 8, 22, 0.6);
+}
+
+.control-center .control-center-list-placeholder {
+  opacity: 0.35;
+  color: var(--text-color-disabled);
+}
+
+.control-center .control-center-list {
+  background: transparent;
+}
+
+.control-center .control-center-list .notification {
+  box-shadow: var(--notification-shadow);
+}
+
+.control-center .control-center-list .notification .notification-default-action,
+.control-center .control-center-list .notification .notification-action {
+  transition: var(--group-collapse-tranistion), var(--hover-tranistion);
+}
+
+.control-center .control-center-list .notification .notification-default-action:hover,
+.control-center .control-center-list .notification .notification-action:hover {
+  background-color: var(--noti-bg-hover);
+}
+
+.blank-window {
+  background: transparent;
+}
+
+.floating-notifications {
+  background: transparent;
+}
+
+.floating-notifications .notification {
+  box-shadow: none;
+}
+
+/*** Widgets ***/
+.widget {
+  margin: 6px;
+  padding: 8px;
+  border-radius: var(--border-radius);
+}
+
+.widget-title > label {
+  margin-right: 8px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: rgb(169, 201, 232);
+  letter-spacing: 0.04em;
+}
+
+.widget-title > button {
+  margin-left: 8px;
+  border-radius: var(--border-radius);
+  color: rgba(74, 141, 183, 0.7);
+  background: rgba(46, 109, 164, 0.08);
+  border: 1px solid rgba(74, 141, 183, 0.14);
+  font-size: 12px;
+}
+
+.widget-title > button:hover {
+  color: var(--accent-bright);
+  background: rgba(46, 109, 164, 0.14);
+  border: 1px solid rgba(74, 141, 183, 0.28);
+}
+
+.widget-dnd label {
+  color: var(--text-color);
+  margin-right: 8px;
+  font-size: 1rem;
+}
+
+.widget-dnd switch {
+  border-radius: 20px;
+  margin-left: 8px;
+  background: rgba(46, 109, 164, 0.12);
+  border: 1px solid rgba(74, 141, 183, 0.22);
+}
+
+.widget-dnd switch:checked {
+  background: rgba(46, 109, 164, 0.35);
+}
+
+.widget-dnd switch slider {
+  border-radius: 20px;
+  background: rgb(74, 141, 183);
+}
+
+.widget-inhibitors > label {
+  margin-right: 8px;
+  font-size: 1.1rem;
+  color: rgb(169, 201, 232);
+}
+
+.widget-inhibitors > button {
+  margin-left: 8px;
+  border-radius: var(--border-radius);
+  color: rgba(74, 141, 183, 0.7);
+  background: rgba(46, 109, 164, 0.08);
+  border: 1px solid rgba(74, 141, 183, 0.14);
+  font-size: 12px;
+}
+
+.widget-label > label {
+  font-size: 1rem;
+  color: var(--text-color-disabled);
+}
+
+:root {
+  --mpris-album-art-overlay: rgba(5, 8, 22, 0.72);
+  --mpris-button-hover: rgba(46, 109, 164, 0.14);
+  --mpris-album-art-icon-size: 80px;
+  --mpris-album-art-shadow: 0px 0px 16px rgba(46, 109, 164, 0.22);
+}
+
+.widget-mpris {
+  padding: 0;
+}
+
+.widget-mpris .widget-mpris-player {
+  margin: 10px 14px;
+  border-radius: var(--border-radius);
+  box-shadow: var(--mpris-album-art-shadow);
+  border: 1px solid rgba(74, 141, 183, 0.14);
+}
+
+.widget-mpris .widget-mpris-player .mpris-background {
+  filter: blur(10px);
+}
+
+.widget-mpris .widget-mpris-player .mpris-overlay {
+  padding: 12px;
+  background-color: var(--mpris-album-art-overlay);
+}
+
+.widget-mpris .widget-mpris-player .mpris-overlay button:hover {
+  background: var(--mpris-button-hover);
+}
+
+.widget-mpris .widget-mpris-player .mpris-overlay .widget-mpris-album-art {
+  border-radius: 6px;
+  box-shadow: var(--mpris-album-art-shadow);
+  -gtk-icon-size: var(--mpris-album-art-icon-size);
+}
+
+.widget-mpris .widget-mpris-player .mpris-overlay .widget-mpris-title {
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: rgb(169, 201, 232);
+}
+
+.widget-mpris .widget-mpris-player .mpris-overlay .widget-mpris-subtitle {
+  font-size: 0.95rem;
+  color: rgb(136, 153, 170);
+}
+
+.widget-buttons-grid flowboxchild > button {
+  border-radius: var(--border-radius);
+  background: rgba(46, 109, 164, 0.08);
+  border: 1px solid rgba(74, 141, 183, 0.16);
+  color: var(--text-color);
+}
+
+.widget-buttons-grid flowboxchild > button:hover {
+  background: rgba(46, 109, 164, 0.16);
+}
+
+.widget-buttons-grid flowboxchild > button.toggle:checked {
+  background: rgba(46, 109, 164, 0.28);
+  border: 1px solid rgba(74, 141, 183, 0.45);
+  color: rgb(169, 201, 232);
+}
+
+.widget-slider label {
+  font-size: inherit;
+  color: var(--text-color);
+}
+
+:root {
+  --widget-volume-row-icon-size: 22px;
+}
+
+.widget-volume row image {
+  -gtk-icon-size: var(--widget-volume-row-icon-size);
+}
+
+.per-app-volume {
+  background-color: rgba(46, 109, 164, 0.06);
+  margin: 6px;
+  margin-bottom: 0;
+  border-radius: var(--border-radius);
+  border: 1px solid rgba(74, 141, 183, 0.12);
+}

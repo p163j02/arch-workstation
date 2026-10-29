@@ -1,0 +1,16 @@
+[Unit]
+Description=airpods-tui headless IPC for native Eww / Waybar
+After=bluetooth.target
+PartOf=graphical-session.target
+
+ConditionFileIsExecutable=%h/.local/bin/airpods-tui
+
+[Service]
+ExecStart=%h/.local/bin/airpods-tui --daemon
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=5
+KillMode=control-group
+
+[Install]
+WantedBy=default.target

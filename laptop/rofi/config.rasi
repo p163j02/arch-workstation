@@ -1,0 +1,16 @@
+configuration {
+    modi: "drun,window,run";
+    show-icons: true;
+    icon-theme: "Papirus-Dark";
+    drun-display-format: "{name}";
+    window-format: "{w} · {c} · {t}";
+    // Conservar el workspace desde el que se selecciona la aplicación.
+    run-command: "@HOME@/.config/hypr/launch-in-workspace.py {cmd}";
+    run-shell-command: "@HOME@/.config/hypr/launch-in-workspace.py {terminal} -e {cmd}";
+    drun {
+        // Evitar que la activación por D-Bus omita el lanzador compartido.
+        DBusActivatable: false;
+    }
+}
+
+@theme "~/.config/rofi/theme.rasi"

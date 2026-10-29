@@ -1,0 +1,9 @@
+[Unit]
+Description=Automatic and pinned extra Waybar workspaces
+PartOf=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/python3 %h/.config/waybar/scripts/workspace-section.py daemon
+Restart=on-failure
+RestartSec=2
+TimeoutStopSec=3

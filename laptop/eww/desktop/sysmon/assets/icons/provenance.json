@@ -1,0 +1,50 @@
+[
+  {
+    "source": "control-center/assets/frecuencia.png",
+    "source_sha256": "7df1746acf212da5977054196dbaed1ad57c12ec5720bc1ca068073aba61e8c2",
+    "derived": "desktop/sysmon/assets/icons/frecuencia.png",
+    "operation": "ImageMagick -trim +repage; user-supplied PNG, no generated artwork"
+  },
+  {
+    "source": "control-center/assets/disco.png",
+    "source_sha256": "903aba6e3eaf388dd6734376ed1a8bbc02632755a9fbd9cf6fb350ca0653d829",
+    "derived": "desktop/sysmon/assets/icons/disco.png",
+    "operation": "ImageMagick -trim +repage; user-supplied PNG, no generated artwork"
+  },
+  {
+    "source": "control-center/assets/top_cpu.png",
+    "source_sha256": "2cb5040a89553cb85f30cc1e90f824c9d6c00a218bda3e3221615744a46435ee",
+    "derived": "desktop/sysmon/assets/icons/top_cpu.png",
+    "operation": "ImageMagick -trim +repage; user-supplied PNG, no generated artwork"
+  },
+  {
+    "source": "control-center/assets/cpu.png",
+    "source_sha256": "4faba0a9ebe6e0f70ec5eae649898ae0ea542e485b5142d4f19ada0c76c560d3",
+    "derived": "desktop/sysmon/assets/icons/cpu.png",
+    "operation": "ImageMagick -trim +repage; user-supplied PNG, no generated artwork"
+  },
+  {
+    "source": "control-center/assets/top_ram.png",
+    "source_sha256": "fab0c92b5224116bb318a1406b907abd6bac0b7be0005c2ff020bc32b177b821",
+    "derived": "desktop/sysmon/assets/icons/top_ram.png",
+    "operation": "ImageMagick -trim +repage; user-supplied PNG, no generated artwork"
+  },
+  {
+    "source": "control-center/assets/gpu.png",
+    "source_sha256": "b5ba781bd1bcdf7fa39389418318d0853915e5fe57ecec5a1857e749d235ae3c",
+    "derived": "desktop/sysmon/assets/icons/gpu.png",
+    "operation": "ImageMagick -trim +repage; user-supplied PNG, no generated artwork"
+  },
+  {
+    "source": "control-center/assets/ram.png",
+    "source_sha256": "b9492d7fe46de2b87d8c22f09f84dd8f4c18b78376de2e3db176a276b4f694a6",
+    "derived": "desktop/sysmon/assets/icons/ram.png",
+    "operation": "ImageMagick -trim +repage; user-supplied PNG, no generated artwork"
+  },
+  {
+    "source": "control-center/assets/temperatura.png",
+    "source_sha256": "84212002c430dda362f5f1d2804780e02a90ff8d8084b3aaf665282193b46345",
+    "derived": "desktop/sysmon/assets/icons/temperatura.png",
+    "operation": "ImageMagick -trim +repage; user-supplied PNG, no generated artwork"
+  }
+]

@@ -28,29 +28,25 @@ sync_tree() {
     rsync -a --delete "${RSYNC_EXCLUDES[@]}" "$@" "$source/" "$destination/"
 }
 for name in "${CONFIG_NAMES[@]}"; do
-    [[ "$name" == hypr || "$name" == waybar ]] && continue
-    sync_tree "$CONFIG_DIR/$name" "$SNAPSHOT/shared/$name"
+    # Older installations have only .conf; retain the new Lua entry points until applied.
+    native_excludes=()
+    if [[ "$name" == hypr && ! -f "$CONFIG_DIR/hypr/hyprland.lua" ]]; then
+        native_excludes=(--exclude=hyprland.lua --exclude=local-settings.lua)
+    fi
+    sync_tree "$CONFIG_DIR/$name" "$SNAPSHOT/$PROFILE/$name" "${native_excludes[@]}" \
+        --exclude=local.conf --exclude=local.lua --exclude='*.so' \
+        --exclude=workspaces.conf --exclude=workspaces-state.css
 done
-for source in "$REPO_DIR/shared/hypr/"*; do
-    name="${source##*/}"
-    [[ ! -f "$CONFIG_DIR/hypr/$name" ]] || cp -a "$CONFIG_DIR/hypr/$name" "$SNAPSHOT/shared/hypr/$name"
-done
-hypr_excludes=(--exclude=local.conf)
-for source in "$REPO_DIR/shared/hypr/"*; do hypr_excludes+=("--exclude=/${source##*/}"); done
-sync_tree "$CONFIG_DIR/hypr" "$SNAPSHOT/$PROFILE/hypr" "${hypr_excludes[@]}"
-sync_tree "$CONFIG_DIR/waybar" "$SNAPSHOT/$PROFILE/waybar" --exclude=/scripts/
-sync_tree "$CONFIG_DIR/waybar/scripts" "$SNAPSHOT/shared/waybar/scripts"
-[[ "$PROFILE" != laptop ]] || sync_tree "$CONFIG_DIR/nwg-displays" "$SNAPSHOT/laptop/nwg-displays"
-[[ ! -f "$HOME/.nanorc" ]] || cp "$HOME/.nanorc" "$SNAPSHOT/shared/nano/user.nanorc"
-for unit in "$REPO_DIR/shared/systemd/user/"*.service; do
+[[ ! -d "$REPO_DIR/$PROFILE/nwg-displays" ]] || sync_tree "$CONFIG_DIR/nwg-displays" "$SNAPSHOT/$PROFILE/nwg-displays"
+sync_tree "$HOME/wallpapers" "$SNAPSHOT/$PROFILE/wallpapers"
+[[ ! -f "$HOME/.nanorc" ]] || cp "$HOME/.nanorc" "$SNAPSHOT/$PROFILE/nano/user.nanorc"
+for unit in "$REPO_DIR/$PROFILE/systemd/user/"*.service; do
     source="$CONFIG_DIR/systemd/user/${unit##*/}"
-    [[ ! -f "$source" ]] || cp "$source" "$SNAPSHOT/shared/systemd/user/"
+    [[ ! -f "$source" ]] || cp "$source" "$SNAPSHOT/$PROFILE/systemd/user/"
 done
-python3 "$REPO_DIR/scripts/portable.py" normalize "$SNAPSHOT/shared" "$HOME"
 python3 "$REPO_DIR/scripts/portable.py" normalize "$SNAPSHOT/$PROFILE" "$HOME"
 python3 "$REPO_DIR/scripts/check.py" --root "$SNAPSHOT"
 
-rsync -a --delete "${RSYNC_EXCLUDES[@]}" "$SNAPSHOT/shared/" "$REPO_DIR/shared/"
 rsync -a --delete "${RSYNC_EXCLUDES[@]}" "$SNAPSHOT/$PROFILE/" "$REPO_DIR/$PROFILE/"
 echo "Actualizado el perfil $PROFILE. El otro perfil se conserva."
 if git -C "$REPO_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then

@@ -81,6 +81,39 @@ class PortableTests(unittest.TestCase):
         self.assertEqual(check.jsonc('{"url":"https://example.org/a,}",/*x*/"a":[1,],}'),
                          {'url': 'https://example.org/a,}', 'a': [1]})
 
+    def test_lua_loads_existing_monitor_keyboard_and_wallpaper_overrides(self):
+        for profile in ('desktop', 'laptop'):
+            with self.subTest(profile=profile), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                (root / 'local.conf').write_text(
+                    '# Existing user settings and Wallpaper Studio palette\n'
+                    'input {\n kb_layout = us\n}\n'
+                    'general:col.active_border = rgba(2c80e0ee) rgba(e865a3ee) 45deg\n'
+                    'general:col.inactive_border = rgba(0c1323aa)\n'
+                    'monitor = DP-1, preferred, auto, 1\n')
+                script = f'''
+local config, monitor
+hl = {{ config = function(value) config = value end,
+       monitor = function(value) monitor = value end }}
+local settings = dofile({json.dumps(str(ROOT / profile / 'hypr/local-settings.lua'))})
+settings.read({json.dumps(str(root / 'local.conf'))})
+assert(config.input.kb_layout == "us")
+assert(config.general.col.active_border.colors[1] == "rgba(2c80e0ee)")
+assert(config.general.col.active_border.colors[2] == "rgba(e865a3ee)")
+assert(config.general.col.active_border.angle == 45)
+assert(config.general.col.inactive_border == "rgba(0c1323aa)")
+assert(monitor.output == "DP-1" and monitor.mode == "preferred" and monitor.scale == 1)
+'''
+                subprocess.run(['lua', '-'], input=script, text=True, check=True, capture_output=True)
+                stage = root / '.config/hypr'
+                shutil.copytree(ROOT / profile / 'hypr', stage)
+                shutil.copy2(root / 'local.conf', stage / 'local.conf')
+                transform(stage, str(root), render=True)
+                result = subprocess.run(['Hyprland', '--verify-config', '-c', str(stage / 'hyprland.lua')],
+                                        cwd=root, capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertIn('config ok', result.stdout)
+
     def test_missing_aur_package_fails(self):
         with patch.object(check.subprocess, 'check_output', return_value='\n'.join(
             check.package_names(ROOT) + ['amd-ucode', 'intel-ucode', 'nvidia-open-dkms',
@@ -130,7 +163,7 @@ class InstallTests(unittest.TestCase):
     def test_waybar_editor_installs_without_changing_waybar(self):
         app = Path(self.temp.name) / 'editor-source'
         app.mkdir()
-        shutil.copy2(ROOT / 'apps/waybar-editor/install.sh', app / 'install.sh')
+        shutil.copy2(ROOT / 'desktop/apps/waybar-editor/install.sh', app / 'install.sh')
         binaries = self.home / 'bin'
         binaries.mkdir()
         for name, script in {
@@ -164,7 +197,7 @@ class InstallTests(unittest.TestCase):
         for name in ('waybar-editor', 'wallpaper-studio'):
             target = apps / name
             target.mkdir(parents=True)
-            shutil.copy2(ROOT / 'apps' / name / 'install.sh', target / 'install.sh')
+            shutil.copy2(ROOT / 'laptop/apps' / name / 'install.sh', target / 'install.sh')
         binaries = self.home / 'bin'
         binaries.mkdir()
         for name, script in {
@@ -197,21 +230,31 @@ class InstallTests(unittest.TestCase):
                 self.assertEqual(shebang, '#!' + str(config / 'eww/control-center/scripts/fast-client'))
                 self.assertEqual((config / 'hypr/battery-monitor.sh').exists(), profile == 'laptop')
                 self.assertFalse((config / 'opencode/service.json').exists())
-                launcher = check.jsonc((config / 'waybar/config.jsonc').read_text())['custom/wallpaper']['on-click']
+                bar = check.jsonc((config / 'waybar/config.jsonc').read_text())
+                launcher = next(value['on-click'] for key, value in bar.items()
+                                if key.startswith('custom/wallpaper'))
                 self.assertIn('wallpaper-studio', launcher)
                 self.assertIn('wallpaper-studio --restore', (config / 'hypr/session-start.sh').read_text())
                 self.assertIn('io.local.WallpaperStudio', (config / 'hypr/hyprland.conf').read_text())
                 self.assertIn('@import "wallpaper-studio.scss";', (config / 'eww/control-center/eww.scss').read_text())
                 self.assertTrue((config / 'eww/control-center/wallpaper-studio.scss').is_file())
+                if profile == 'desktop':
+                    library = Path(bar['cffi/workspace-animation']['module_path'])
+                    self.assertEqual(library.parent, config / 'waybar/cffi')
+                    self.assertTrue(library.is_file())
+                    self.assertTrue((config / 'systemd/user/waybar-workspaces.service').is_file())
+                    self.assertIn('waybar-workspaces.service', (config / 'hypr/session-start.sh').read_text())
 
     def test_reinstall_backs_up_and_preserves_private_settings(self):
         config = self.install('laptop')
         (config / 'kitty/kitty.conf').write_text('old-settings\n')
         (config / 'hypr/local.conf').write_text('kb_layout = us\n')
+        (config / 'hypr/local.lua').write_text('hl.config({ input = { kb_layout = "us" } })\n')
         (config / 'opencode/service.json').write_text('{"password":"local-only"}\n')
         (config / 'eww/control-center/settings.local.json').write_text('{"brightness_min":9}\n')
         self.install('laptop')
         self.assertEqual((config / 'hypr/local.conf').read_text(), 'kb_layout = us\n')
+        self.assertIn('kb_layout = "us"', (config / 'hypr/local.lua').read_text())
         self.assertIn('local-only', (config / 'opencode/service.json').read_text())
         self.assertIn('9', (config / 'eww/control-center/settings.local.json').read_text())
         backups = self.home / '.local/state/dotfiles/backups'
@@ -220,23 +263,33 @@ class InstallTests(unittest.TestCase):
     def test_update_keeps_profiles_separate_and_omits_secrets(self):
         repo = Path(self.temp.name) / 'repo'
         shutil.copytree(ROOT, repo, symlinks=True,
-                        ignore=shutil.ignore_patterns('.git', 'node_modules', '__pycache__', 'graphify-out'))
+                        ignore=shutil.ignore_patterns('.git', 'node_modules', '__pycache__', 'graphify-out', 'target'))
         config = self.install('desktop', repo)
         marker = repo / 'laptop/hypr/marker'
         marker.write_text('preserve notebook\n')
+        laptop_before = {str(p.relative_to(repo / 'laptop')): p.read_bytes()
+                         for p in (repo / 'laptop').rglob('*') if p.is_file()}
+        desktop_source = (repo / 'desktop/apps/waybar-editor/src/main.rs').read_bytes()
         (config / 'opencode/service.json').write_text('{"password":"local-only"}\n')
         command = ['bash', str(repo / 'update.sh')]
         wrong = subprocess.run(command + ['laptop'], env=self.env, capture_output=True, text=True)
         self.assertNotEqual(wrong.returncode, 0)
         (config / 'kitty/kitty.conf').write_text('font_size 11\n')
+        (self.home / 'wallpapers/profile-only.txt').write_text('desktop wallpaper\n')
         result = subprocess.run(command + ['desktop'], env=self.env, capture_output=True, text=True, timeout=45)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn('Actualizado el perfil desktop', result.stdout, result.stdout + result.stderr)
         self.assertEqual(marker.read_text(), 'preserve notebook\n')
-        self.assertEqual((repo / 'shared/kitty/kitty.conf').read_text(), 'font_size 11\n')
-        self.assertFalse((repo / 'shared/opencode/service.json').exists())
-        self.assertEqual((repo / 'shared/eww/control-center/scripts/backend.py').read_text().splitlines()[0],
+        self.assertEqual((repo / 'desktop/kitty/kitty.conf').read_text(), 'font_size 11\n')
+        self.assertFalse((repo / 'desktop/opencode/service.json').exists())
+        self.assertEqual((repo / 'desktop/eww/control-center/scripts/backend.py').read_text().splitlines()[0],
                          '#!/usr/bin/env python3')
+        self.assertEqual(laptop_before, {str(p.relative_to(repo / 'laptop')): p.read_bytes()
+                                        for p in (repo / 'laptop').rglob('*') if p.is_file()})
+        self.assertEqual((repo / 'desktop/apps/waybar-editor/src/main.rs').read_bytes(), desktop_source)
+        self.assertEqual((repo / 'desktop/wallpapers/profile-only.txt').read_text(), 'desktop wallpaper\n')
+        self.assertFalse(list((repo / 'desktop/waybar').rglob('*.so')))
+        self.assertNotRegex((repo / 'desktop/waybar/config.jsonc').read_text(), r'workspace-animation-[a-f0-9]+\.so')
 
     def test_media_metadata_is_valid_json(self):
         binaries = self.home / 'bin'
@@ -246,7 +299,7 @@ class InstallTests(unittest.TestCase):
                           'print("Playing" if "status" in sys.argv else \'Song "quoted" \\\\ Live\\nPart 2\')\n')
         player.chmod(0o755)
         env = dict(self.env, PATH=str(binaries) + ':' + os.environ['PATH'])
-        output = subprocess.check_output(['bash', str(ROOT / 'shared/waybar/scripts/media-status.sh')],
+        output = subprocess.check_output(['bash', str(ROOT / 'desktop/waybar/scripts/media-status.sh')],
                                          env=env, text=True)
         self.assertIn('\\ Live', json.loads(output)['tooltip'])
 

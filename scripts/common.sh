@@ -8,7 +8,7 @@ CONFIG_NAMES=(btop eww fastfetch fish gtk-3.0 gtk-4.0 hypr kitty lazygit nvim
 RSYNC_EXCLUDES=(--no-owner --no-group --exclude=node_modules/ --exclude=__pycache__/ --exclude=graphify-out/
     --exclude=target/ --exclude=.git/ --exclude='*.pyc' --exclude='*.bak*'
     --exclude='*.save*' --exclude=fish_variables --exclude=service.json
-    --exclude=auth.json --exclude='.env*' --exclude='*.local.*' --exclude=fast-client
+    --exclude=auth.json --exclude='.env*' --exclude='*.local.*' --exclude=local.conf --exclude=local.lua --exclude=fast-client
     --exclude='*.pem' --exclude='*.key' --exclude='*.p12' --exclude='*.pfx'
     --exclude='*.keystore' --exclude=id_rsa --exclude=id_ed25519 --exclude='.credentials*')
 

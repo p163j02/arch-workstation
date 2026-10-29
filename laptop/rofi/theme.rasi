@@ -1,0 +1,100 @@
+* {
+    bg:             #1a1b26;
+    bg-alt:         #1e2030;
+    bg-selected:    #3d59a1;
+    fg:             #c0caf5;
+    fg-alt:         #565f89;
+    accent:         #7aa2f7;
+    border-color:   #292e42;
+
+    background-color: transparent;
+    text-color:       @fg;
+    font:             "JetBrainsMono Nerd Font 13";
+}
+
+window {
+    background-color: @bg;
+    border:           2px solid;
+    border-color:     @accent;
+    border-radius:    16px;
+    width:            600px;
+    padding:          12px;
+}
+
+mainbox {
+    background-color: transparent;
+    children:         [inputbar, listview];
+    spacing:          10px;
+}
+
+inputbar {
+    background-color: @bg-alt;
+    border-radius:    10px;
+    padding:          8px 12px;
+    spacing:          8px;
+    children:         [prompt, entry, mode-switcher];
+}
+
+prompt {
+    color:            @accent;
+    font:             "JetBrainsMono Nerd Font Bold 13";
+}
+
+entry {
+    color:            @fg;
+    placeholder:      "Search...";
+    placeholder-color: @fg-alt;
+    expand:           true;
+}
+
+mode-switcher {
+    background-color: transparent;
+    spacing:          4px;
+}
+
+button {
+    background-color: @bg;
+    border-radius:    8px;
+    padding:          4px 10px;
+    color:            @fg-alt;
+    cursor:           pointer;
+}
+
+button selected {
+    background-color: @bg-selected;
+    color:            #ffffff;
+}
+
+listview {
+    background-color: transparent;
+    columns:          1;
+    lines:            8;
+    spacing:          4px;
+    scrollbar:        false;
+}
+
+element {
+    background-color: transparent;
+    border-radius:    10px;
+    padding:          8px 12px;
+    spacing:          10px;
+    orientation:      horizontal;
+}
+
+element selected {
+    background-color: @bg-selected;
+}
+
+element-icon {
+    size:             24px;
+    vertical-align:   0.5;
+}
+
+element-text {
+    color:            @fg;
+    vertical-align:   0.5;
+}
+
+element selected element-text {
+    color: #ffffff;
+}

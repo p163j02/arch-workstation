@@ -1,0 +1,23 @@
+(defwidget cc-profiles-widget []
+ (box :orientation "v" :space-evenly false :spacing 14
+  (cc-header :icon "󰁹" :title "Batería y energía")
+  (box :space-evenly false :spacing 12
+   (label :class "cc-battery-pill" :text {cc_profiles.battery_available ? "${cc_profiles.percent}%" : "—"})
+   (box :orientation "v" :space-evenly false :spacing 5 :hexpand true
+    (label :text {cc_profiles.battery_status} :xalign 0)
+    (label :class "cc-secondary" :text {cc_profiles.remaining} :xalign 0)))
+  (cc-section :text "Modo de energía")
+  (box :orientation "v" :space-evenly false :spacing 6
+   (for profile in {cc_profiles.profiles}
+    (button :class {profile.selected ? "cc-device selected" : "cc-device"} :active {cc_profiles.available && !cc_profiles.busy} :timeout "10s" :onclick "scripts/backend.py action profiles profile ${profile.id}"
+     (box :space-evenly false :spacing 12
+      (label :class "cc-row-icon" :text {profile.icon})
+      (box :orientation "v" :space-evenly false :spacing 4 :hexpand true
+       (label :text {profile.name} :xalign 0)
+       (label :text {profile.description} :class "cc-secondary" :xalign 0 :wrap true))
+      (label :class "cc-accent" :text {profile.selected ? "󰄯" : "󰄰"})))))
+  (box :class "cc-footer" :orientation "v" :space-evenly false :spacing 4
+   (label :class "cc-secondary" :text "Estimación según consumo real." :xalign 0)
+   (label :class "cc-secondary" :text "Se actualiza al usar el modo elegido." :xalign 0))
+  (cc-error :text {cc_profiles.degraded})
+  (cc-error :text {cc_profiles.error})))

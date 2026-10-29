@@ -1,15 +1,16 @@
 {
   "layer": "top",
-  "output": "*",
+  "output": ["*"],
   "position": "top",
   "height": 40,
   "margin-top": 0,
   "margin-left": 8,
   "margin-right": 8,
   "spacing": 0,
-  "modules-left": ["hyprland/workspaces"],
-  "modules-center": ["custom/virtualbox","custom/zen","custom/firefox","custom/terminal","custom/chatgpt","custom/claude-code","custom/discord","custom/steam","custom/files","custom/zed","custom/vscode","custom/antigravity","custom/spotify","custom/wallpaper"],
-  "modules-right": ["custom/media","tray","network","pulseaudio","power-profiles-daemon","custom/nightlight","custom/power","custom/clock"],
+  "modules-left": ["hyprland/workspaces", "custom/workspace-toggle", "cffi/workspace-animation"],
+  "reload_style_on_change": true,
+  "modules-center": ["custom/virtualbox","custom/zen","custom/firefox","custom/terminal","custom/chatgpt","custom/claude-code","custom/discord","custom/steam","custom/files","custom/zed","custom/vscode","custom/antigravity","custom/spotify","custom/wallpaper-studio"],
+  "modules-right": ["custom/media","custom/nightlight","tray","network","pulseaudio","power-profiles-daemon","custom/power","custom/clock"],
   "hyprland/workspaces": {
     "format": "{icon} {windows}",
     "format-window-separator": " ",
@@ -19,10 +20,10 @@
       "class<code(-oss)?>": "󰨞",
       "class<firefox>": "󰈹",
       "class<firefox> title<.*[Yy]ou[Tt]ube.*>": "󰗃",
-      "class<firefox> title<.*[Gg]it[Hh]ub.*>": "\uf09b",
+      "class<firefox> title<.*[Gg]it[Hh]ub.*>": "",
       "class<zen>": "󰖟",
       "class<zen> title<.*[Yy]ou[Tt]ube.*>": "󰗃",
-      "class<zen> title<.*[Gg]it[Hh]ub.*>": "\uf09b",
+      "class<zen> title<.*[Gg]it[Hh]ub.*>": "",
       "class<kitty>": "󱃾",
       "class<Alacritty>": "",
       "class<foot>": "",
@@ -73,8 +74,7 @@
       "9": "γ",
       "10": "δ",
       "11": "ε",
-      "12": "ζ",
-      "default": ""
+      "12": "ζ"
     },
     "persistent-workspaces": {
       "1": [],
@@ -89,7 +89,24 @@
       "10": [],
       "11": [],
       "12": []
-    }
+    },
+    "all-outputs": true,
+    "sort-by": "number",
+    "ignore-workspaces": [
+      "^(?![1-9][0-9]*$).*"
+    ]
+  },
+  "custom/workspace-toggle": {
+    "exec": "~/.config/waybar/scripts/workspace-section.py watch",
+    "on-click": "~/.config/waybar/scripts/workspace-section.py toggle",
+    "return-type": "json",
+    "format": "{}",
+    "restart-interval": 1,
+    "exec-on-event": false,
+    "tooltip": true
+  },
+  "cffi/workspace-animation": {
+    "module_path": "@HOME@/.config/waybar/cffi/workspace-animation.so"
   },
   "custom/newws": {
     "format": "+",
@@ -187,18 +204,6 @@
     "on-click": "~/.config/hypr/launch-in-workspace.py zed",
     "tooltip-format": "Zed"
   },
-  "backlight": {
-    "format": "{icon} {percent}%",
-    "format-icons": [
-      "󰃞",
-      "󰃟",
-      "󰃠"
-    ],
-    "on-click": "~/.config/eww/control-center/scripts/popup-manager.py brightness",
-    "on-scroll-up": "~/.config/eww/control-center/scripts/backend.py action brightness step 5",
-    "on-scroll-down": "~/.config/eww/control-center/scripts/backend.py action brightness step -5",
-    "tooltip": false
-  },
   "cpu": {
     "format": "󰻠 {usage}%",
     "tooltip-format": "CPU: {usage}%",
@@ -227,29 +232,6 @@
     "interval": 60,
     "format": "{}",
     "tooltip": false
-  },
-  "battery": {
-    "on-click": "~/.config/eww/control-center/scripts/popup-manager.py profiles",
-    "states": {
-      "warning": 30,
-      "critical": 15
-    },
-    "format": "{icon} {capacity}%",
-    "format-charging": "󰂄 {capacity}%",
-    "format-plugged": " {capacity}%",
-    "format-icons": [
-      "󰂎",
-      "󰁺",
-      "󰁻",
-      "󰁼",
-      "󰁽",
-      "󰁾",
-      "󰁿",
-      "󰂀",
-      "󰂁",
-      "󰂂",
-      "󰁹"
-    ]
   },
   "network": {
     "format-wifi": "{icon}",
@@ -306,4 +288,16 @@
     "icon-size": 16,
     "spacing": 8
   }
+,
+  "margin-bottom": 0
+,
+  "custom/wallpaper-studio": {
+  "format": "󱇤"
+,
+  "tooltip-format": "Wallpaper Studio"
+,
+  "tooltip": true
+,
+  "on-click": "@HOME@/.config/hypr/launch-in-workspace.py @HOME@/.local/bin/wallpaper-studio"
+}
 }

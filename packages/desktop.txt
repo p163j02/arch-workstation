@@ -1,1 +1,0 @@
-# El perfil desktop usa las aplicaciones comunes y detección de GPU/CPU.

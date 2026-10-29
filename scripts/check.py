@@ -52,7 +52,7 @@ def reject_credentials(value, path):
 
 
 def check_secrets(root):
-    forbidden = {'service.json', 'auth.json', 'fish_variables', 'id_rsa', 'id_ed25519'}
+    forbidden = {'service.json', 'auth.json', 'fish_variables', 'id_rsa', 'id_ed25519', 'local.conf', 'local.lua'}
     for path in files(root, include_private=True):
         if path.is_symlink():
             continue
@@ -74,8 +74,7 @@ def check_secrets(root):
 
 def package_names(root):
     return sorted({line.split('#')[0].strip()
-                   for p in (root / 'packages').glob('*.txt')
-                   if p.name != 'aur.txt'
+                   for p in root.glob('*/packages/official.txt')
                    for line in p.read_text().splitlines() if line.split('#')[0].strip()})
 
 
@@ -87,8 +86,8 @@ def check_packages(root):
     missing = sorted(set(package_names(root) + hardware) - available)
     if missing:
         raise ValueError('Paquetes oficiales ausentes: ' + ', '.join(missing) + '. Actualiza las bases con pacman -Syu.')
-    aur = [l.split('#')[0].strip() for l in (root / 'packages/aur.txt').read_text().splitlines()
-           if l.split('#')[0].strip()]
+    aur = sorted({l.split('#')[0].strip() for p in root.glob('*/packages/aur.txt')
+                  for l in p.read_text().splitlines() if l.split('#')[0].strip()})
     query = urllib.parse.urlencode([('arg[]', n) for n in aur])
     with urllib.request.urlopen('https://aur.archlinux.org/rpc/v5/info?' + query, timeout=45) as response:
         data = json.load(response)
@@ -140,11 +139,10 @@ def check(root):
     for profile in ('laptop', 'desktop'):
         with tempfile.TemporaryDirectory(prefix='dotfiles-check-') as temp:
             stage = Path(temp) / '.config/hypr'
-            shutil.copytree(root / 'shared/hypr', stage)
-            shutil.copytree(root / profile / 'hypr', stage, dirs_exist_ok=True)
+            shutil.copytree(root / profile / 'hypr', stage)
             (stage / 'local.conf').touch()
             transform(stage, temp, render=True)
-            config = stage / 'hyprland.conf'
+            config = stage / 'hyprland.lua'
             # Validate the assembled sources without reading the active user's Hyprland config.
             config.write_text(config.read_text().replace('~/.config/hypr/', str(stage) + '/'))
             result = subprocess.run([hyprland, '--verify-config', '-c', str(config)],

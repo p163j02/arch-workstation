@@ -36,7 +36,7 @@ BUILD_DIR="$(mktemp -d -t dotfiles-install.XXXXXXXX)"
 trap 'rm -rf -- "$BUILD_DIR"' EXIT
 
 if [[ "$MODE" == --install ]]; then
-    package_list="$(read_packages "$REPO_DIR/packages/common.txt" "$REPO_DIR/packages/$PROFILE.txt")"
+    package_list="$(read_packages "$REPO_DIR/$PROFILE/packages/official.txt")"
     mapfile -t packages <<< "$package_list"
     # Install headers for every supported installed kernel; do not change the bootloader.
     mapfile -t kernels < <(pacman -Qq | grep -Ex 'linux|linux-lts|linux-zen|linux-hardened' || true)
@@ -56,13 +56,13 @@ if [[ "$MODE" == --install ]]; then
         git clone --depth 1 https://aur.archlinux.org/yay.git "$BUILD_DIR/yay"
         (cd "$BUILD_DIR/yay" && makepkg -si)
     fi
-    mapfile -t aur < <(read_packages "$REPO_DIR/packages/aur.txt")
+    mapfile -t aur < <(read_packages "$REPO_DIR/$PROFILE/packages/aur.txt")
     yay -S --needed "${aur[@]}"
     sudo corepack enable
     corepack prepare pnpm@latest --activate
 
-    # Both native applications use the same locked Rust build.
-    bash "$REPO_DIR/apps/wallpaper-studio/install.sh"
+    # Each profile owns its source; both applications use its locked Rust build.
+    bash "$REPO_DIR/$PROFILE/apps/wallpaper-studio/install.sh"
 
     if [[ "$PROFILE" == laptop && ! -x "$HOME/.local/bin/airpods-tui" ]]; then
         # The panel uses the IPC protocol verified with this exact upstream revision.
@@ -78,9 +78,9 @@ python3 "$REPO_DIR/scripts/check.py"
 
 STAGE="$BUILD_DIR/config"
 mkdir -p "$STAGE"
-rsync -a "${RSYNC_EXCLUDES[@]}" "$REPO_DIR/shared/" "$STAGE/"
-rsync -a "$REPO_DIR/$PROFILE/hypr/" "$STAGE/hypr/"
-rsync -a "$REPO_DIR/$PROFILE/waybar/" "$STAGE/waybar/"
+for name in "${CONFIG_NAMES[@]}"; do
+    rsync -a "${RSYNC_EXCLUDES[@]}" --exclude='*.so' "$REPO_DIR/$PROFILE/$name/" "$STAGE/$name/"
+done
 if [[ -d "$REPO_DIR/$PROFILE/nwg-displays" ]]; then
     rsync -a "$REPO_DIR/$PROFILE/nwg-displays/" "$STAGE/nwg-displays/"
 fi
@@ -90,6 +90,9 @@ cc -O2 -Wall -Wextra "$STAGE/eww/control-center/scripts/fast-client.c" \
 for name in backend.py popup-manager.py; do
     sed -i "1c#!$CONFIG_DIR/eww/control-center/scripts/fast-client" "$STAGE/eww/control-center/scripts/$name"
 done
+if [[ -f "$STAGE/waybar/cffi/build-animation.py" ]]; then
+    python3 "$STAGE/waybar/cffi/build-animation.py" --install-directory "$CONFIG_DIR/waybar/cffi"
+fi
 
 BACKUP="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/backups/$(date +%Y%m%d-%H%M%S)-$$"
 mkdir -p -m700 "$BACKUP"
@@ -103,22 +106,22 @@ install_tree() {
         [[ ! -L "$CONFIG_DIR/$name" ]] || { echo "Retira el enlace $CONFIG_DIR/$name antes de instalar." >&2; return 1; }
     fi
     mkdir -p "$CONFIG_DIR/$name"
-    rsync -a --delete "${RSYNC_EXCLUDES[@]}" --exclude=local.conf "$STAGE/$name/" "$CONFIG_DIR/$name/"
+    rsync -a --delete "${RSYNC_EXCLUDES[@]}" --exclude=local.conf --exclude=local.lua "$STAGE/$name/" "$CONFIG_DIR/$name/"
 }
 for name in "${CONFIG_NAMES[@]}"; do install_tree "$name"; done
 install -m755 "$STAGE/eww/control-center/scripts/fast-client" "$CONFIG_DIR/eww/control-center/scripts/fast-client"
-[[ "$PROFILE" != laptop ]] || install_tree nwg-displays
+[[ ! -d "$STAGE/nwg-displays" ]] || install_tree nwg-displays
 [[ -e "$HOME/.nanorc" ]] && cp -a "$HOME/.nanorc" "$BACKUP/nanorc"
-install -m644 "$REPO_DIR/shared/nano/user.nanorc" "$HOME/.nanorc"
+install -m644 "$REPO_DIR/$PROFILE/nano/user.nanorc" "$HOME/.nanorc"
 touch "$CONFIG_DIR/hypr/local.conf"
 find "$CONFIG_DIR/hypr" "$CONFIG_DIR/waybar" "$CONFIG_DIR/eww" -type f \
     \( -name '*.sh' -o -name '*.py' \) -exec chmod +x {} +
 
 mkdir -p "$HOME/wallpapers" "$CONFIG_DIR/dotfiles" "$CONFIG_DIR/systemd/user"
-rsync -a --no-owner --no-group --backup --backup-dir="$BACKUP/wallpapers" "$REPO_DIR/laptop/wallpapers/" "$HOME/wallpapers/"
+rsync -a --no-owner --no-group --backup --backup-dir="$BACKUP/wallpapers" "$REPO_DIR/$PROFILE/wallpapers/" "$HOME/wallpapers/"
 [[ ! -e "$CONFIG_DIR/dotfiles/profile" ]] || cp "$CONFIG_DIR/dotfiles/profile" "$BACKUP/profile"
 printf '%s\n' "$PROFILE" > "$CONFIG_DIR/dotfiles/profile"
-for unit in "$REPO_DIR/shared/systemd/user/"*.service; do
+for unit in "$REPO_DIR/$PROFILE/systemd/user/"*.service; do
     [[ ! -e "$CONFIG_DIR/systemd/user/${unit##*/}" ]] || cp -a "$CONFIG_DIR/systemd/user/${unit##*/}" "$BACKUP/"
     cp "$unit" "$CONFIG_DIR/systemd/user/"
 done
@@ -134,25 +137,28 @@ if systemctl --user show-environment >/dev/null 2>&1; then
 fi
 
 if [[ "$MODE" == --install ]]; then
-    # Preserve system files before deploying the shared login and memory configuration.
+    # Preserve system files before deploying this profile's login and memory configuration.
     for path in /etc/sddm.conf.d/theme.conf /etc/systemd/zram-generator.conf \
         /etc/sysctl.d/99-swappiness.conf; do
         if sudo test -e "$path"; then sudo cp --parents -a "$path" "$BACKUP/"; fi
     done
-    sudo install -Dm644 "$REPO_DIR/laptop/sddm/theme.conf" /etc/sddm.conf.d/theme.conf
+    sudo install -Dm644 "$REPO_DIR/$PROFILE/sddm/theme.conf" /etc/sddm.conf.d/theme.conf
     sudo mkdir -p /usr/share/sddm/themes/pixie
     if sudo test -d /usr/share/sddm/themes/pixie; then
         sudo cp -a /usr/share/sddm/themes/pixie "$BACKUP/pixie-theme"
     fi
-    sudo rsync -a --chown=root:root "$REPO_DIR/laptop/sddm/pixie/" /usr/share/sddm/themes/pixie/
-    sudo install -Dm644 "$REPO_DIR/laptop/system/zram-generator.conf" /etc/systemd/zram-generator.conf
-    sudo install -Dm644 "$REPO_DIR/laptop/system/99-swappiness.conf" /etc/sysctl.d/99-swappiness.conf
+    sudo rsync -a --chown=root:root "$REPO_DIR/$PROFILE/sddm/pixie/" /usr/share/sddm/themes/pixie/
+    sudo install -Dm644 "$REPO_DIR/$PROFILE/system/zram-generator.conf" /etc/systemd/zram-generator.conf
+    sudo install -Dm644 "$REPO_DIR/$PROFILE/system/99-swappiness.conf" /etc/sysctl.d/99-swappiness.conf
     sudo systemctl daemon-reload
     sudo systemctl enable NetworkManager sddm firewalld docker power-profiles-daemon
     [[ "$PROFILE" != laptop ]] || sudo systemctl enable bluetooth
     # Do not restart networking, SDDM or Bluetooth in the user's active session.
     sudo usermod -aG docker,vboxusers "$(id -un)"
     [[ "${SHELL:-}" == */fish ]] || chsh -s /usr/bin/fish
+
+    # GTK en Wayland toma estos valores de GSettings, incluso si settings.ini existe.
+    python3 "$REPO_DIR/scripts/gtk-settings.py" "$REPO_DIR/$PROFILE/system/desktop-interface.ini"
 fi
 
 echo "Configuración instalada. Respaldo: $BACKUP"

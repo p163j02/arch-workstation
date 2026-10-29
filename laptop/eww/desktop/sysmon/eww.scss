@@ -1,0 +1,43 @@
+// Referencia monitor-design.png, adaptada a GTK3 y a los tokens vivos de Waybar.
+window { background: transparent; }
+
+.sysmon-card {
+  font-family: "JetBrainsMono Nerd Font";
+  font-size: 12px;
+  background-color: rgba(7, 17, 24, 0.90);
+  border: 1px solid rgba(64, 191, 191, 0.5);
+  border-radius: 20px;
+  padding: 18px 18px 20px;
+  margin: 5px;
+  // El contorno efectivo (incluidas las sombras) llega por border_data.style.
+}
+.sysmon-card label { padding: 0; min-height: 0; }
+.nerd-icon { font-family: "JetBrainsMono Nerd Font"; font-weight: normal; }
+.section-header { min-height: 33px; }
+.section-title { font-size: 18px; font-weight: 700; letter-spacing: 0.3px; }
+.section-metric { font-size: 28px; font-weight: 700; }
+.ram-activity .section-metric { font-size: 24px; }
+.metric-details { font-size: 11px; margin-left: 41px; }
+.disk-fstype { font-size: 10px; margin-left: 5px; }
+.cpu-graph, .disk-graph { margin-top: 5px; }
+.ram-meter { margin-top: 5px; }
+.ram-meter, .ram-fill { border-radius: 10px; min-height: 18px; }
+.ram-fill { min-width: 0; }
+.disk-rates { font-size: 10px; }
+.monitor-section { border-bottom: 1px solid; padding-bottom: 10px; }
+.temp-chip {
+  border: 1px solid;
+  border-radius: 12px;
+  padding: 8px 8px 5px;
+  background-image: linear-gradient(150deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0));
+}
+.temp-label { font-size: 13px; font-weight: 600; }
+.temp-val { font-size: 27px; font-weight: 700; }
+.temp-graph { opacity: 0.55; }
+.proc-row { padding: 0 1px; }
+.proc-bullet { font-size: 10px; font-weight: normal; }
+.proc-name { font-size: 12px; }
+.proc-val { font-size: 12px; font-weight: 600; }
+// La pista disponible es 274 px: gráfico 304 menos chevrón, gap y padding.
+.process-meter, .process-fill { border-radius: 6px; min-height: 7px; }
+.process-fill { min-width: 0; }

@@ -1,0 +1,24 @@
+(defwidget cc-wifi-widget []
+ (box :orientation "v" :space-evenly false :spacing 14
+  (cc-header :icon "󰤨" :title "Wi-Fi")
+  (box :space-evenly false :spacing 12
+   (label :text "Wi-Fi" :hexpand true :xalign 0)
+   (button :class {cc_wifi.enabled ? "cc-toggle on" : "cc-toggle"} :timeout "15s" :active {cc_wifi.available && !cc_wifi.busy} :onclick "scripts/backend.py action wifi toggle" {cc_wifi.enabled ? "󰨚" : "󰨙"}))
+  (box :class "cc-current" :orientation "v" :space-evenly false :spacing 6
+   (label :text "󰤨  ${cc_wifi.ssid}" :class "cc-accent" :xalign 0 :limit-width 32 :tooltip {cc_wifi.ssid})
+   (label :text "${cc_wifi.status} · ${cc_wifi.signal}%" :class "cc-secondary" :xalign 0 :limit-width 32)
+   (button :visible {cc_wifi.signal > 0} :timeout "30s" :active {!cc_wifi.busy} :onclick "scripts/backend.py action wifi disconnect" "Desconectar"))
+  (box :space-evenly false
+   (cc-section :text "Redes disponibles")
+   (button :halign "end" :hexpand true :tooltip "Volver a escanear" :timeout "30s" :active {cc_wifi.enabled && !cc_wifi.busy} :onclick "scripts/backend.py action wifi rescan" (label :class {cc_wifi.busy ? "cc-spinner" : "cc-accent"} :text {cc_wifi.spinner})))
+  (scroll :height 190 :hscroll false :vscroll true
+   (box :orientation "v" :space-evenly false
+    (for net in {cc_wifi.networks}
+     (button :class {net.connected ? "cc-network selected" : "cc-network"} :active {cc_wifi.enabled && !cc_wifi.busy && !net.connected} :timeout "60s" :onclick "scripts/backend.py action wifi connect ${net.id}"
+      (box :space-evenly false :spacing 10
+       (label :text {net.signal > 65 ? "󰤨" : net.signal > 35 ? "󰤥" : "󰤟"} :class "cc-row-icon")
+       (label :text {net.name} :hexpand true :xalign 0 :limit-width 21 :tooltip {net.name})
+       (label :text "${net.signal}%" :class "cc-secondary")
+       (label :text {net.secure ? "󰌾" : "󰌿"}))))))
+  (button :timeout "5s" :onclick "nm-connection-editor" "󰐕  Otras redes / perfiles…")
+  (cc-error :text {cc_wifi.error})))

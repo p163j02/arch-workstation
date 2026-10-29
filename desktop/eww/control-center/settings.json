@@ -1,0 +1,12 @@
+{
+  "backlight_device": "",
+  "backlight_monitor": "",
+  "brightness_min": 5,
+  "wifi_interface": "",
+  "bluetooth_adapter": "",
+  "airpods_address": "",
+  "airpods_hide_disconnected": false,
+  "airpods_stale_seconds": 180,
+  "popup_width": 380,
+  "airpods_width": 420
+}

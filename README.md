@@ -1,6 +1,6 @@
 # Arch Workstation — desktop y notebook
 
-Instalación personal de Hyprland, Waybar, Eww, Fish, Kitty, editores y aplicaciones. Revisada el **28 de octubre de 2026** contra los repositorios oficiales de Arch y AUR. Ambos perfiles usan el mismo instalador; los ajustes del notebook están separados.
+Instalación personal de Hyprland, Waybar, Eww, Fish, Kitty, editores y aplicaciones. Revisada el **28 de octubre de 2026** contra los repositorios oficiales de Arch y AUR. Ambos perfiles usan el mismo instalador y mantienen copias independientes de sus configuraciones, aplicaciones, paquetes y recursos.
 
 Esto configura un **Arch Linux ya instalado**. El particionado, cifrado, arranque, usuario y acceso a Internet deben funcionar antes. No modifica particiones ni el bootloader.
 
@@ -45,19 +45,20 @@ El instalador actualiza el sistema completo con `pacman -Syu`, instala las aplic
 
 Detecta microcódigo AMD/Intel y las GPU AMD, Intel o NVIDIA compatibles. Instala `nvidia-open-dkms` para NVIDIA; VirtualBox utiliza DKMS. En notebook instala Bluetooth y compila la revisión de AirPods compatible con el panel. Se usa Node.js 24 LTS con Corepack/pnpm; Fish conserva su integración con nvm.fish.
 
-La instalación completa de **ambos perfiles** también compila **Waybar Editor y Wallpaper Studio** desde el código Rust incluido en `apps/waybar-editor`, con las versiones de dependencias fijadas en `Cargo.lock`. Instala `~/.local/bin/waybar-editor`, `~/.local/bin/wallpaper-studio` y los dos accesos en Rofi. Requiere Internet para descargar las dependencias de Rust; no copia un binario del equipo original.
+La instalación completa de **ambos perfiles** también compila **Waybar Editor y Wallpaper Studio** desde el código Rust incluido en `desktop/apps/waybar-editor` o `laptop/apps/waybar-editor`, según el perfil, con las versiones de dependencias fijadas en `Cargo.lock`. Instala `~/.local/bin/waybar-editor`, `~/.local/bin/wallpaper-studio` y los dos accesos en Rofi. Requiere Internet para descargar las dependencias de Rust; no copia un binario del equipo original.
 
 Si ya instalaste el entorno y solo quieres añadir el editor, desde el repositorio actualizado ejecuta como tu usuario:
 
 ```bash
 sudo pacman -Syu --needed rust pkgconf gtk4 libadwaita python python-gobject python-cairo gtk3
-bash apps/waybar-editor/install.sh
+bash desktop/apps/waybar-editor/install.sh
+# En notebook: bash laptop/apps/waybar-editor/install.sh
 ~/.local/bin/waybar-editor
 ```
 
-Abrir el editor no modifica la barra. Puedes editar aplicaciones, módulos y apariencia; al pulsar **Aplicar** se guarda un respaldo y se solicita a Waybar una recarga. El modo `--config-only` no compila ni instala el editor. Consulta [su documentación](apps/waybar-editor/README.md).
+Abrir el editor no modifica la barra. Puedes editar aplicaciones, módulos y apariencia; al pulsar **Aplicar** se guarda un respaldo y se solicita a Waybar una recarga. El modo `--config-only` no compila ni instala el editor. Consulta [su documentación](desktop/apps/waybar-editor/README.md).
 
-El mismo binario incluye **Wallpaper Studio**, integrado en el botón de fondos de Waybar de **laptop y desktop**. Selecciona fondos estáticos o GIF animados; cada imagen conserva su paleta para Waybar, los bordes de Hyprland, el monitor de recursos y los desplegables Eww. Para instalarlo o actualizarlo en un notebook que ya usa este repositorio, sigue [la guía de Wallpaper Studio](apps/wallpaper-studio/README.md). También tiene un acceso de instalación directo: `bash apps/wallpaper-studio/install.sh`.
+El mismo binario incluye **Wallpaper Studio**, integrado en el botón de fondos de Waybar de **laptop y desktop**. Selecciona fondos estáticos o GIF animados; cada imagen conserva su paleta para Waybar, los bordes de Hyprland, el monitor de recursos y los desplegables Eww. Para instalarlo o actualizarlo en un equipo que ya usa este repositorio, sigue [la guía de Wallpaper Studio](desktop/apps/wallpaper-studio/README.md). También tiene un acceso de instalación directo: `bash desktop/apps/wallpaper-studio/install.sh` (o `laptop/apps/wallpaper-studio/install.sh`).
 
 ## Comprobar sin instalar
 
@@ -67,7 +68,7 @@ En un Arch que ya tenga Hyprland, Fish, Lua y Python:
 bash install.sh laptop --check
 ```
 
-También valida desktop. Comprueba sintaxis, JSON/JSONC, enlaces relativos, credenciales literales, la configuración ensamblada de ambos perfiles y la disponibilidad actual de paquetes oficiales/AUR. Requiere Internet para AUR y bases de pacman recientes; actualízalas mediante `sudo pacman -Syu`.
+También valida desktop. Comprueba sintaxis, JSON/JSONC, enlaces relativos, credenciales literales, la configuración completa de ambos perfiles y la disponibilidad actual de paquetes oficiales/AUR. Requiere Internet para AUR y bases de pacman recientes; actualízalas mediante `sudo pacman -Syu`.
 
 La comprobación local, sin consultar la red:
 
@@ -75,7 +76,7 @@ La comprobación local, sin consultar la red:
 python3 scripts/check.py
 ```
 
-Las pruebas automáticas, con Python, Fish, Lua, Hyprland, rsync, compilador C, GTK3, GtkLayerShell y libnm instalados:
+Las pruebas automáticas, con Python, Fish, Lua, Hyprland, rsync, compilador C, GTK3, GtkLayerShell, libnm, pkgconf y json-glib instalados:
 
 ```bash
 bash scripts/test.sh
@@ -91,7 +92,7 @@ Si las aplicaciones ya están instaladas:
 bash install.sh laptop --config-only
 ```
 
-O usa `desktop`. Requiere Python, Fish, Lua, Hyprland, rsync y `cc`. Copia configuraciones, servicios de usuario y fondos, y compila el cliente IPC local de Eww. No instala paquetes, cambia la shell de inicio ni modifica `/etc`. Los servicios empiezan al abrir una nueva sesión de Hyprland.
+O usa `desktop`. Requiere Python, Fish, Lua, Hyprland, rsync y `cc`. Copia las configuraciones, servicios de usuario y fondos del perfil, y compila el cliente IPC local de Eww. En desktop también compila el adaptador CFFI de los workspaces; requiere `pkgconf`, GTK3 y `json-glib`. No instala paquetes, cambia la shell de inicio ni modifica `/etc`. Los servicios empiezan al abrir una nueva sesión de Hyprland.
 
 Antes de reemplazar configuraciones se crea un respaldo privado en:
 
@@ -101,13 +102,13 @@ Antes de reemplazar configuraciones se crea un respaldo privado en:
 
 Los directorios están en `config/`, nano en `nanorc`, las unidades de usuario anteriores en la raíz del respaldo y los fondos reemplazados en `wallpapers/`. Una instalación completa también respalda los archivos de sistema y el tema Pixie anteriores. Restaura los archivos necesarios desde ese directorio con la sesión gráfica cerrada; los archivos de sistema requieren sudo.
 
-Se conservan `hypr/local.conf`, `*.local.*`, las variables universales de Fish y los archivos de autenticación existentes. Si un directorio completo de configuración es un enlace simbólico, el instalador pide resolverlo antes de reemplazarlo.
+Se conservan `hypr/local.conf`, `hypr/local.lua`, `*.local.*`, las variables universales de Fish y los archivos de autenticación existentes. Si un directorio completo de configuración es un enlace simbólico, el instalador pide resolverlo antes de reemplazarlo.
 
 ## Ajustes propios de cada máquina
 
 Los monitores usan su modo preferido y Waybar admite todos los conectores. El notebook detecta el panel interno y la batería, sin exigir `eDP-1`, `BAT0` ni una resolución fija. `Super+F2` abre los modos de pantalla del notebook.
 
-Para ajustes de Hyprland que no quieras compartir, edita:
+Para ajustes locales de monitores, teclado y los bordes de Wallpaper Studio, se conserva el archivo existente:
 
 ```text
 ~/.config/hypr/local.conf
@@ -121,6 +122,8 @@ input {
 }
 # monitor = DP-1, preferred, auto, 1
 ```
+
+Para atajos, reglas u otras personalizaciones en Lua, usa `~/.config/hypr/local.lua`; se carga al final y tampoco se exporta. El lector de `local.conf` admite ajustes de configuración y líneas `monitor`, conservando los bloques de colores de Wallpaper Studio.
 
 El centro de control usa el único backlight disponible y detecta un monitor externo para DDC/CI. En desktop controla el monitor externo aunque no haya backlight de portátil; en NVIDIA puede detectar su bus mediante `ddcutil`. Con varios dispositivos, crea `~/.config/eww/control-center/settings.local.json` con la selección real del equipo:
 
@@ -147,9 +150,9 @@ bash update.sh laptop
 # En el otro equipo: bash update.sh desktop
 ```
 
-El script prepara y valida una copia temporal antes de actualizar el repo. Sin un marcador de instalación o con un perfil incorrecto, se detiene. Actualiza las configuraciones compartidas y **solo el perfil seleccionado**, conserva el otro perfil y normaliza las rutas personales a `@HOME@`. El instalador sustituye ese marcador por la ruta del nuevo usuario.
+El script prepara y valida una copia temporal antes de actualizar el repo. Sin un marcador de instalación o con un perfil incorrecto, se detiene. Actualiza **solo el perfil seleccionado**, incluidos sus scripts y fondos, conserva íntegro el otro perfil y normaliza las rutas personales a `@HOME@`. El instalador sustituye ese marcador por la ruta del nuevo usuario.
 
-No exporta credenciales, `fish_variables`, `node_modules`, ajustes locales, binarios compilados, cachés, grafos generados ni archivos `.bak`/`.save`. Tampoco importa automáticamente cambios arbitrarios desde `/etc`; los ajustes de sistema declarados se editan en el repositorio.
+No exporta credenciales, `fish_variables`, `node_modules`, ajustes locales, binarios compilados, cachés, grafos generados ni archivos `.bak`/`.save`. Tampoco importa automáticamente cambios desde `/etc`, listas de paquetes o fuentes de aplicaciones; esos archivos se mantienen explícitamente dentro de cada perfil.
 
 Revisa antes de guardar:
 
@@ -167,27 +170,32 @@ El exportador también funciona desde una copia portable sin `.git`; en ese caso
 ## Organización
 
 ```text
-install.sh                 Instalación común, comprobación y modo config-only
-update.sh                  Exportación por perfil
-packages/                  Listas oficiales compartidas, por perfil y AUR
-apps/waybar-editor/        Código Rust compartido, Cargo.lock e instalador de ambas apps
-apps/wallpaper-studio/     Acceso de instalación y guía del gestor de fondos
+install.sh                 Instalador para el perfil seleccionado
+update.sh                  Exportación exclusiva del perfil seleccionado
 scripts/                   Validación, detección de hardware y pruebas
-shared/hypr/               Configuración común y scripts de sesión
-shared/waybar/scripts/     Indicador multimedia compartido
-shared/eww/                Monitor del escritorio y centro de control actual
-shared/systemd/user/       Servicios de Eww, Wi-Fi y AirPods
-shared/                    Resto de configuraciones de usuario
-laptop/hypr/               Batería, modos de pantalla y ajustes del notebook
-laptop/waybar/             Barra del notebook
-laptop/sddm/               Tema Pixie compartido por ambos instaladores
-laptop/system/             Configuración de zram y swappiness compartida
-laptop/wallpapers/         Fondos instalados en ambos perfiles
-desktop/                   Ajustes y barra del escritorio
+desktop/                   Configuración del PC de escritorio actual
+  apps/waybar-editor/      Rust, Cargo.lock e instalador de ambas aplicaciones
+  apps/wallpaper-studio/   Instalador y guía de Wallpaper Studio
+  packages/               Listas propias de paquetes oficiales y AUR
+  hypr/                   Configuración, sesión y atajos del escritorio
+  waybar/                 Barra actual, scripts y fuentes del adaptador CFFI
+  eww/                    Monitor de recursos y centro de control
+  systemd/user/           Servicios del escritorio, incluidos los workspaces
+  sddm/                   Tema Pixie propio
+  system/                 Zram, swappiness y apariencia GSettings
+  wallpapers/             Fondos propios
+  fish/, kitty/, …        Resto de configuraciones del escritorio
+laptop/                    Copia independiente con la misma estructura
+  hypr/                   Incluye batería y modos de pantalla del notebook
+  waybar/                 Barra del notebook, sin cambios del desktop
 tests/                     Instalación aislada, respaldos y sincronización
 ```
 
-Se conservan las rutas existentes de fondos, SDDM y ajustes de sistema para evitar otra migración de archivos. Las configuraciones Hyprlang `.conf` están verificadas con **Hyprland 0.56.2**. Hyprland recomienda Lua; antes de una versión que retire el formato anterior habrá que migrarlas. La comprobación evita declarar válida una configuración que el Hyprland instalado rechace. [Referencia oficial](https://wiki.hypr.land/Configuring/Start/).
+Cada perfil contiene todos sus archivos: no existe una carpeta `shared` ni se toman recursos del otro equipo. Las aplicaciones conservan fuentes independientes y se compilan desde `PERFIL/apps/waybar-editor`; Wallpaper Studio utiliza el mismo binario dentro de ese perfil.
+
+Desktop incorpora la configuración activa de este PC, incluidos los workspaces desplegables de Waybar, su servicio y los atajos de cierre por grupos. El adaptador CFFI se reconstruye al instalar, sin distribuir bibliotecas `.so`. Consulta [los workspaces del desktop](desktop/waybar/WORKSPACES.md). Las rutas personales se normalizan y se omiten credenciales, variables universales de Fish, ajustes locales y archivos generados. Laptop conserva su configuración anterior en archivos propios.
+
+Los dos perfiles incluyen `hypr/hyprland.lua`, validado con **Hyprland 0.57.0**, instalado en este PC. Esa versión retiró la lectura de configuraciones Hyprlang; se conserva `hyprland.conf` como referencia del formato anterior. Los cambios nuevos de Hyprland se editan en Lua. `monitors.conf` y los ajustes de `local.conf` se leen mediante `local-settings.lua`, incluyendo los bordes que guarda Wallpaper Studio. [Nota oficial de la versión](https://hypr.land/news/update57/).
 
 ## Seguridad y límites de la restauración
 

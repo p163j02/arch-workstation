@@ -1,10 +1,10 @@
 # Fish universal variables are machine-local and may contain API keys.
-/shared/fish/fish_variables
+/*/fish/fish_variables
 
 # OpenCode runtime dependencies are regenerated locally.
-/shared/opencode/node_modules/
-/shared/opencode/service.json
-/shared/opencode/auth.json
+/*/opencode/node_modules/
+/*/opencode/service.json
+/*/opencode/auth.json
 **/node_modules/
 **/__pycache__/
 **/graphify-out/
@@ -14,7 +14,13 @@
 *.save*
 *.local.*
 .env*
-shared/eww/control-center/scripts/fast-client
+/*/eww/control-center/scripts/fast-client
+*.so
+/*/hypr/workspaces.conf
+/*/hypr/workspaces-state.css
+/*/waybar/workspaces-state.css
+/*/hypr/local.conf
+/*/hypr/local.lua
 nvim.log
 
 # Private keys and local credential stores
