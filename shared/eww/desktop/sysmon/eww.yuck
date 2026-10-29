@@ -106,7 +106,7 @@
 
 (defwidget sysmon []
   (box :class "sysmon-card" :orientation "v" :space-evenly false :spacing 10
-    :style "${border_data.style} background-color: rgba(7, 17, 24, 0.90); color: ${border_data.text};"
+    :style "${border_data.style} background-color: ${border_data.background}; color: ${border_data.text};"
     (cpu-activity)
     (disk-activity)
     (ram-activity)

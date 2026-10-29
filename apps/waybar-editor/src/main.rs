@@ -1,15 +1,25 @@
 mod apps;
 mod glyphs;
+mod hardware;
 mod model;
 mod preview;
 mod storage;
 mod ui;
+mod wallpaper;
 
 use adw::prelude::*;
 use std::path::PathBuf;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+    let program = std::path::Path::new(&args[0])
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("waybar-editor");
+    if program == "wallpaper-studio" || args.iter().any(|arg| arg == "--wallpapers") {
+        wallpaper::run();
+        return;
+    }
     if args.iter().any(|arg| arg == "--help" || arg == "-h") {
         println!(
             "Waybar Editor\n\nUsage: waybar-editor [--config PATH] [--style PATH] [--data PATH]\n       waybar-editor --check [--config PATH] [--style PATH]\n\nNative Rust/GTK4 editor. Changes remain drafts until Apply is pressed."

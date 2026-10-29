@@ -71,6 +71,11 @@ class PortableTests(unittest.TestCase):
             p.write_text(f'#!{temp}/fast-client\nprint(1)\n')
             transform(root, temp)
             self.assertEqual(p.read_text(), '#!/usr/bin/env python3\nprint(1)\n')
+            settings = root / 'eww/control-center/settings.json'
+            settings.parent.mkdir(parents=True)
+            settings.write_text(json.dumps({'external_connector': 'DP-3', 'ddc_bus': '7'}))
+            transform(root, temp)
+            self.assertEqual(json.loads(settings.read_text()), {'external_connector': '', 'ddc_bus': ''})
 
     def test_jsonc_preserves_urls_and_string_punctuation(self):
         self.assertEqual(check.jsonc('{"url":"https://example.org/a,}",/*x*/"a":[1,],}'),
@@ -146,7 +151,36 @@ class InstallTests(unittest.TestCase):
         self.assertTrue(os.access(binary, os.X_OK))
         entry = self.home / '.local/share/applications/waybar-editor.desktop'
         self.assertIn(f'Exec="{binary}"', entry.read_text())
+        wallpaper = self.home / '.local/bin/wallpaper-studio'
+        self.assertTrue(wallpaper.is_symlink())
+        self.assertEqual(wallpaper.resolve(), binary)
+        wallpaper_entry = self.home / '.local/share/applications/wallpaper-studio.desktop'
+        self.assertIn(f'Exec="{wallpaper}"', wallpaper_entry.read_text())
+        self.assertIn('io.local.WallpaperStudio', wallpaper_entry.read_text())
         self.assertEqual(config.read_text(), '{"modules-left":["clock"]}')
+
+    def test_wallpaper_studio_installer_works_outside_repository(self):
+        apps = Path(self.temp.name) / 'apps'
+        for name in ('waybar-editor', 'wallpaper-studio'):
+            target = apps / name
+            target.mkdir(parents=True)
+            shutil.copy2(ROOT / 'apps' / name / 'install.sh', target / 'install.sh')
+        binaries = self.home / 'bin'
+        binaries.mkdir()
+        for name, script in {
+            'cargo': '#!/bin/sh\nmkdir -p target/release\nprintf "#!/bin/sh\\nexit 0\\n" > target/release/waybar-editor\n',
+            'pkg-config': '#!/bin/sh\nexit 0\n',
+        }.items():
+            path = binaries / name
+            path.write_text(script)
+            path.chmod(0o755)
+        result = subprocess.run(['sh', str(apps / 'wallpaper-studio/install.sh')], cwd='/',
+                                env=dict(self.env, PATH=str(binaries) + ':' + os.environ['PATH']),
+                                capture_output=True, text=True, timeout=15)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertTrue(os.access(self.home / '.local/bin/wallpaper-studio', os.X_OK))
+        self.assertTrue((self.home / '.local/share/applications/wallpaper-studio.desktop').is_file())
+        self.assertFalse((self.home / '.config/waybar').exists())
 
     def test_both_profiles_from_an_empty_home(self):
         for profile in ('laptop', 'desktop'):
@@ -163,6 +197,12 @@ class InstallTests(unittest.TestCase):
                 self.assertEqual(shebang, '#!' + str(config / 'eww/control-center/scripts/fast-client'))
                 self.assertEqual((config / 'hypr/battery-monitor.sh').exists(), profile == 'laptop')
                 self.assertFalse((config / 'opencode/service.json').exists())
+                launcher = check.jsonc((config / 'waybar/config.jsonc').read_text())['custom/wallpaper']['on-click']
+                self.assertIn('wallpaper-studio', launcher)
+                self.assertIn('wallpaper-studio --restore', (config / 'hypr/session-start.sh').read_text())
+                self.assertIn('io.local.WallpaperStudio', (config / 'hypr/hyprland.conf').read_text())
+                self.assertIn('@import "wallpaper-studio.scss";', (config / 'eww/control-center/eww.scss').read_text())
+                self.assertTrue((config / 'eww/control-center/wallpaper-studio.scss').is_file())
 
     def test_reinstall_backs_up_and_preserves_private_settings(self):
         config = self.install('laptop')

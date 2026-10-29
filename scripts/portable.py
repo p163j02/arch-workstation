@@ -19,7 +19,7 @@ def transform(root, home, render=False):
             text = '#!/usr/bin/env python3\n' + text.split('\n', 1)[1]
         if not render and path.name == 'settings.json' and path.parent.name == 'control-center':
             settings = json.loads(text)
-            for key in ('backlight_device', 'backlight_monitor', 'airpods_address', 'external_connector'):
+            for key in ('backlight_device', 'backlight_monitor', 'airpods_address', 'external_connector', 'ddc_bus'):
                 if key in settings:
                     settings[key] = ''
             text = json.dumps(settings, ensure_ascii=False, indent=2) + '\n'

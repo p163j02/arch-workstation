@@ -117,8 +117,8 @@ impl Document {
         Ok(set.into_iter().collect())
     }
 
-    /// Configured modules absent from both zones and reachable groups.
-    pub fn hidden_modules(&self) -> Result<Vec<String>> {
+    /// Modules reachable from zones, including nested groups (cycle-safe).
+    pub fn visible_modules(&self) -> Result<BTreeSet<String>> {
         let root = self.root_object_value()?;
         let mut pending = Vec::new();
         for zone in ["modules-left", "modules-center", "modules-right"] {
@@ -138,6 +138,12 @@ impl Document {
                 pending.extend(members.iter().filter_map(Value::as_str).map(str::to_owned));
             }
         }
+        Ok(visible)
+    }
+
+    /// Configured modules absent from both zones and reachable groups.
+    pub fn hidden_modules(&self) -> Result<Vec<String>> {
+        let visible = self.visible_modules()?;
         Ok(self
             .all_modules()?
             .into_iter()
@@ -1318,6 +1324,28 @@ fn shell_split(input: &str) -> Result<Vec<String>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn visible_modules_ignores_hidden_battery_and_follows_named_instances_in_groups() {
+        let mut document = Document {
+            config: serde_json::json!({
+                "modules-right": ["group/status"],
+                "group/status": {"modules": ["clock"]},
+                "battery": {},
+            })
+            .to_string(),
+            css: String::new(),
+        };
+        assert!(!document.visible_modules().unwrap().contains("battery"));
+        document
+            .set_property(
+                Some("group/status"),
+                "modules",
+                serde_json::json!(["battery#main"]),
+            )
+            .unwrap();
+        assert!(document.visible_modules().unwrap().contains("battery#main"));
+    }
 
     #[test]
     fn hidden_modules_excludes_visible_nested_groups_and_cycles() {

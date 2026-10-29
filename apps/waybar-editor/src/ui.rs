@@ -31,6 +31,7 @@ struct Ui {
     preview_picture: gtk::Picture,
     preview_scroll: gtk::ScrolledWindow,
     preview_zoom: gtk::ToggleButton,
+    preview_battery: gtk::Box,
     preview_scenario: [gtk::ToggleButton; 4],
     preview_frame: Cell<(i32, i32)>,
     renderer: crate::preview::Renderer,
@@ -159,7 +160,8 @@ pub fn build(application: &adw::Application, paths: Paths) {
     caption.set_halign(gtk::Align::Start);
     let preview_controls = gtk::Box::new(gtk::Orientation::Horizontal, 10);
     preview_controls.append(&caption);
-    preview_controls.append(&gtk::Label::new(Some("Batería:")));
+    let preview_battery = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+    preview_battery.append(&gtk::Label::new(Some("Batería:")));
     let scenarios = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     scenarios.add_css_class("linked");
     scenarios.set_tooltip_text(Some(
@@ -182,7 +184,8 @@ pub fn build(application: &adw::Application, paths: Paths) {
         button.set_group(Some(&preview_scenario[0]));
     }
     preview_scenario[0].set_active(true);
-    preview_controls.append(&scenarios);
+    preview_battery.append(&scenarios);
+    preview_controls.append(&preview_battery);
     let preview_zoom = gtk::ToggleButton::with_label("Tamaño real");
     preview_zoom.set_sensitive(false);
     preview_zoom.set_tooltip_text(Some("Activado muestra la barra sin reducirla: desplaza la vista para recorrerla. Desactivado ajusta la imagen al ancho disponible."));
@@ -510,6 +513,7 @@ pub fn build(application: &adw::Application, paths: Paths) {
         preview_picture,
         preview_scroll,
         preview_zoom,
+        preview_battery,
         preview_scenario,
         preview_frame: Cell::new((0, 0)),
         renderer: crate::preview::Renderer::new(),
@@ -801,6 +805,14 @@ impl Ui {
     fn refresh_preview(&self) {
         let state = self.state.borrow();
         let value = state.draft.value().unwrap_or(json!({}));
+        self.preview_battery.set_visible(
+            state
+                .draft
+                .visible_modules()
+                .unwrap_or_default()
+                .iter()
+                .any(|module| module.split('#').next() == Some("battery")),
+        );
         let appearance = self.read_appearance();
         let mut module_styles = String::new();
         for (index, zone) in ZONES.iter().enumerate() {
@@ -1306,7 +1318,7 @@ impl Ui {
                 None,
                 "output",
                 if outputs.is_empty() {
-                    json!("*")
+                    json!(["*"])
                 } else {
                     json!(outputs)
                 },
@@ -1386,7 +1398,9 @@ impl Ui {
             "wlr/taskbar",
             "idle_inhibitor",
         ] {
-            if !modules.iter().any(|name| name == module) {
+            if crate::hardware::module_available(module)
+                && !modules.iter().any(|name| name == module)
+            {
                 modules.push(module.into());
             }
         }
@@ -1394,7 +1408,7 @@ impl Ui {
         let dialog = form_dialog(
             &self.window,
             "Añadir módulo",
-            "Los módulos personalizados ocultos conservan su configuración. Los módulos nuevos usan los valores predeterminados de Waybar.",
+            "El catálogo ofrece batería y brillo de portátil solo si el equipo dispone de ese hardware. Los módulos ya configurados se conservan; los nuevos usan los valores predeterminados de Waybar.",
         );
         let chooser =
             gtk::DropDown::from_strings(&modules.iter().map(String::as_str).collect::<Vec<_>>());
@@ -1720,7 +1734,7 @@ impl Ui {
         );
         let entry = gtk::Entry::new();
         entry.set_text(initial);
-        entry.set_placeholder_text(Some("Por ejemplo: Trabajo o Laptop"));
+        entry.set_placeholder_text(Some("Por ejemplo: Trabajo o Juegos"));
         dialog.body.append(&field_row("Nombre", &entry));
         let focus_entry = entry.clone();
         let window = dialog.window.clone();

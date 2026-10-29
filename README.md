@@ -45,7 +45,7 @@ El instalador actualiza el sistema completo con `pacman -Syu`, instala las aplic
 
 Detecta microcódigo AMD/Intel y las GPU AMD, Intel o NVIDIA compatibles. Instala `nvidia-open-dkms` para NVIDIA; VirtualBox utiliza DKMS. En notebook instala Bluetooth y compila la revisión de AirPods compatible con el panel. Se usa Node.js 24 LTS con Corepack/pnpm; Fish conserva su integración con nvm.fish.
 
-La instalación completa de **ambos perfiles** también compila Waybar Editor desde el código incluido en `apps/waybar-editor`, con las versiones de dependencias fijadas en `Cargo.lock`. Instala `~/.local/bin/waybar-editor` y el acceso **Waybar Editor** en Rofi. Requiere Internet para descargar las dependencias de Rust; no copia un binario del equipo original.
+La instalación completa de **ambos perfiles** también compila **Waybar Editor y Wallpaper Studio** desde el código Rust incluido en `apps/waybar-editor`, con las versiones de dependencias fijadas en `Cargo.lock`. Instala `~/.local/bin/waybar-editor`, `~/.local/bin/wallpaper-studio` y los dos accesos en Rofi. Requiere Internet para descargar las dependencias de Rust; no copia un binario del equipo original.
 
 Si ya instalaste el entorno y solo quieres añadir el editor, desde el repositorio actualizado ejecuta como tu usuario:
 
@@ -56,6 +56,8 @@ bash apps/waybar-editor/install.sh
 ```
 
 Abrir el editor no modifica la barra. Puedes editar aplicaciones, módulos y apariencia; al pulsar **Aplicar** se guarda un respaldo y se solicita a Waybar una recarga. El modo `--config-only` no compila ni instala el editor. Consulta [su documentación](apps/waybar-editor/README.md).
+
+El mismo binario incluye **Wallpaper Studio**, integrado en el botón de fondos de Waybar de **laptop y desktop**. Selecciona fondos estáticos o GIF animados; cada imagen conserva su paleta para Waybar, los bordes de Hyprland, el monitor de recursos y los desplegables Eww. Para instalarlo o actualizarlo en un notebook que ya usa este repositorio, sigue [la guía de Wallpaper Studio](apps/wallpaper-studio/README.md). También tiene un acceso de instalación directo: `bash apps/wallpaper-studio/install.sh`.
 
 ## Comprobar sin instalar
 
@@ -120,7 +122,7 @@ input {
 # monitor = DP-1, preferred, auto, 1
 ```
 
-El centro de control usa el único backlight disponible y detecta un monitor externo para DDC/CI. Con varios dispositivos, crea `~/.config/eww/control-center/settings.local.json` con la selección real del equipo:
+El centro de control usa el único backlight disponible y detecta un monitor externo para DDC/CI. En desktop controla el monitor externo aunque no haya backlight de portátil; en NVIDIA puede detectar su bus mediante `ddcutil`. Con varios dispositivos, crea `~/.config/eww/control-center/settings.local.json` con la selección real del equipo:
 
 ```json
 {
@@ -132,7 +134,7 @@ El centro de control usa el único backlight disponible y detecta un monitor ext
 }
 ```
 
-Omite las claves que no necesites. Selecciona la dirección real de tus AirPods después de emparejarlos; `bluetoothctl devices Paired` permite consultarla. No se copian claves de emparejamiento ni se conecta automáticamente a una dirección personal fija. Para DDC/CI, el monitor debe admitirlo y tenerlo habilitado; `ddcutil` debe disponer del acceso I²C que configura su paquete. No se sustituye el brillo físico por gamma.
+Omite las claves que no necesites. Selecciona la dirección real de tus AirPods después de emparejarlos; `bluetoothctl devices Paired` permite consultarla. No se copian claves de emparejamiento ni se conecta automáticamente a una dirección personal fija. Si el bus no puede asociarse al conector, añade `"ddc_bus": "7"` a la configuración local usando el número real que muestre `ddcutil detect --brief`. Para DDC/CI, el monitor debe admitirlo y tenerlo habilitado; `ddcutil` debe disponer del acceso I²C que configura su paquete. No se sustituye el brillo físico por gamma.
 
 Los ajustes locales no se exportan. Guarda fuera del repositorio cualquier calibración privada que necesites recuperar.
 
@@ -168,7 +170,8 @@ El exportador también funciona desde una copia portable sin `.git`; en ese caso
 install.sh                 Instalación común, comprobación y modo config-only
 update.sh                  Exportación por perfil
 packages/                  Listas oficiales compartidas, por perfil y AUR
-apps/waybar-editor/        Código fuente, dependencias fijadas e instalador del editor
+apps/waybar-editor/        Código Rust compartido, Cargo.lock e instalador de ambas apps
+apps/wallpaper-studio/     Acceso de instalación y guía del gestor de fondos
 scripts/                   Validación, detección de hardware y pruebas
 shared/hypr/               Configuración común y scripts de sesión
 shared/waybar/scripts/     Indicador multimedia compartido

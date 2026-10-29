@@ -87,7 +87,7 @@ reload_bars() {
   sleep 0.5
   waybar -c ~/.config/waybar/config.jsonc -s ~/.config/waybar/style.css &
   disown
-  waypaper --restore
+  wallpaper-studio --restore || waypaper --restore
 }
 
 # ── main ──────────────────────────────────────────────────────────────────────

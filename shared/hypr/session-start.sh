@@ -14,7 +14,7 @@ if ! awww query >/dev/null 2>&1; then
         sleep 0.1
     done
 fi
-waypaper --restore || echo "No se pudo restaurar el fondo; revisa Waypaper." >&2
+wallpaper-studio --restore || waypaper --restore || echo "No se pudo restaurar el fondo; revisa Wallpaper Studio." >&2
 eww daemon || echo "Revisa el daemon Eww." >&2
 eww open sysmon-widget || echo "No se pudo abrir el monitor de recursos." >&2
 if [[ $(hyprctl monitors -j | jq length) -gt 1 ]]; then eww open sysmon-widget-ext || true; fi

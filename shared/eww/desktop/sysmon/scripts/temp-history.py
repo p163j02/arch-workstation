@@ -48,7 +48,6 @@ def main():
                 print(json.dumps(data), flush=True)
                 frame += 1
             except (subprocess.SubprocessError, ValueError, KeyError, OSError) as error:
-                import sys
                 print(f'temp-history: {error}', file=sys.stderr)
             time.sleep(5)
 

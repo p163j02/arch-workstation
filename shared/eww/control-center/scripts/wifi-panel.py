@@ -264,6 +264,14 @@ class WifiPanel:
             Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         )
 
+        self.theme_provider = Gtk.CssProvider()
+        self.theme_signature = None
+        Gtk.StyleContext.add_provider_for_screen(
+            Gdk.Screen.get_default(), self.theme_provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1
+        )
+        self.refresh_theme()
+        GLib.timeout_add(500, self.refresh_theme)
+
         self.container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
         self.container.get_style_context().add_class('cc-panel')
         self.container.get_style_context().add_class('wifi')
@@ -285,6 +293,26 @@ class WifiPanel:
 
         GLib.timeout_add(1000, self.poll)
         GLib.timeout_add(100, self.animate_spinner)
+
+    def refresh_theme(self):
+        if not self.running:
+            return False
+        path = ROOT / 'wallpaper-studio.scss'
+        try:
+            stat = path.stat()
+            signature = (stat.st_ino, stat.st_mtime_ns, stat.st_size)
+            if signature != self.theme_signature:
+                provider = Gtk.CssProvider()
+                provider.load_from_data(path.read_bytes())
+                screen = Gdk.Screen.get_default()
+                if screen is not None:
+                    Gtk.StyleContext.add_provider_for_screen(screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1)
+                    Gtk.StyleContext.remove_provider_for_screen(screen, self.theme_provider)
+                self.theme_provider = provider
+                self.theme_signature = signature
+        except (OSError, GLib.Error):
+            pass  # Keep the last valid palette during an incomplete update.
+        return True
 
     def build_ui(self):
         header = Gtk.Box(spacing=12)

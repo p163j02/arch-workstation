@@ -4,7 +4,7 @@ import importlib.util
 from pathlib import Path
 import sys
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / 'scripts'
@@ -20,6 +20,29 @@ popup_spec.loader.exec_module(popup_manager)
 
 
 class NativeWifiHelpers(unittest.TestCase):
+    def test_wallpaper_theme_refresh_preserves_last_good_css(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory, patch.object(wifi_panel, 'ROOT', Path(directory)):
+            panel = wifi_panel.WifiPanel.__new__(wifi_panel.WifiPanel)
+            panel.running = True
+            panel.theme_provider = wifi_panel.Gtk.CssProvider()
+            panel.theme_signature = None
+            path = Path(directory) / 'wallpaper-studio.scss'
+            path.write_text('.cc-panel {color: #e865a3;}')
+            self.assertTrue(panel.refresh_theme())
+            previous = panel.theme_signature
+            before = panel.theme_provider.to_string()
+            path.write_text('.cc-panel { color: invalid-value; }')
+            self.assertTrue(panel.refresh_theme())
+            self.assertEqual(panel.theme_signature, previous)
+            # Provider changes are staged, so failed parsing preserves the theme.
+            self.assertEqual(panel.theme_provider.to_string(), before)
+            path.write_text('.cc-panel {color: #2c80e0;}')
+            self.assertTrue(panel.refresh_theme())
+            self.assertNotEqual(panel.theme_provider.to_string(), before)
+            panel.running = False
+            self.assertFalse(panel.refresh_theme())
+
     def test_saved_personal_network_prompts_without_activation(self):
         panel = wifi_panel.WifiPanel.__new__(wifi_panel.WifiPanel)
         panel.local_busy = False

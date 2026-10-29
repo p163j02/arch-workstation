@@ -1,11 +1,15 @@
 """Palette and chart synchronization tests, using only temporary Waybar copies."""
 from pathlib import Path
+import json
+import select
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
 import xml.etree.ElementTree as ET
 
-from monitor_theme import Theme, palette
+from monitor_theme import Theme, palette, wallpaper_colors
 from test_waybar_border import BORDER, fixture
 from test_cpu_activity import CPU
 from test_resource_activity import RESOURCE
@@ -64,6 +68,64 @@ class ThemeTests(unittest.TestCase):
                 for background in ('background', 'card'):
                     ratio = (luminance(tokens[foreground]) + .05) / (luminance(tokens[background]) + .05)
                     self.assertGreaterEqual(ratio, 4.5, (accent, foreground, background))
+
+
+    @staticmethod
+    def studio_css(**changes):
+        colors = dict(accent='#65d9ff', secondary='#bb9af7', background='#10131d', foreground='#f2f4ff')
+        colors.update(changes)
+        return ('/* wallpaper-studio:begin */\n/* wallpaper-studio:colors '
+                + json.dumps(colors) + ' */\n/* wallpaper-studio:end */')
+
+    def test_studio_palette_updates_widget_and_charts_without_editor_block(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'style.css'
+            path.write_text(self.studio_css())
+            theme = Theme(path)
+            tokens = theme.read()
+            self.assertEqual(tokens['primary'], '#65d9ff')
+            self.assertEqual(tokens['soft'], '#bb9af7')
+            self.assertEqual(tokens['background'], '#10131d')
+            self.assertEqual(tokens['text'], '#f2f4ff')
+            BORDER.valid_shadow(tokens['style'].split('box-shadow: ')[1].rstrip(';'))
+            path.write_text(self.studio_css(foreground='#eeeeee', background='#222233'))
+            changed = theme.read()
+            self.assertEqual(changed['primary'], tokens['primary'])
+            self.assertEqual(changed['text'], '#eeeeee')
+            self.assertEqual(changed['background'], '#222233')
+            self.assertNotEqual(changed['card'], tokens['card'])
+
+    def test_studio_validates_complete_palette_and_keeps_last_good(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'style.css'
+            path.write_text(fixture() + self.studio_css())
+            theme = Theme(path)
+            expected = theme.read()
+            for broken in [self.studio_css(accent='url(invalid)'), self.studio_css(foreground=None),
+                           self.studio_css().replace('/* wallpaper-studio:end */', '')]:
+                path.write_text(fixture() + broken)
+                self.assertEqual(theme.read(), expected)
+            self.assertIsNone(wallpaper_colors('/* wallpaper-studio:colors {} */'))
+
+    def test_live_listener_emits_when_only_background_or_text_changes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'style.css'
+            path.write_text(fixture() + self.studio_css())
+            process = subprocess.Popen([sys.executable, str(Path(__file__).with_name('waybar-border.py')), str(path)], stdout=subprocess.PIPE, text=True)
+            def sample():
+                self.assertTrue(select.select([process.stdout], [], [], 3)[0], 'Palette update not emitted')
+                return json.loads(process.stdout.readline())
+            try:
+                before = sample()
+                path.write_text(fixture() + self.studio_css(background='#222233', foreground='#eeeeee'))
+                after = sample()
+                self.assertEqual(before['style'], after['style'])
+                self.assertEqual(after['background'], '#222233')
+                self.assertEqual(after['text'], '#eeeeee')
+            finally:
+                process.terminate()
+                process.wait(timeout=3)
+                process.stdout.close()
 
 
 if __name__ == '__main__':

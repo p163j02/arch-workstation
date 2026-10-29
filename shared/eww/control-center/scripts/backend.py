@@ -232,69 +232,194 @@ def wifi_state():
     status = command(['nmcli', '-g', 'GENERAL.STATE', 'device', 'show', iface])
     return dict(available=True, enabled=enabled, ssid=active['name'] if active else 'Sin conexión', signal=active['signal'] if active else 0, status='Conectado' if active else ('Wi-Fi desactivado' if not enabled else status), networks=unique)
 
+BACKLIGHT_ROOT = Path('/sys/class/backlight')
+DRM_ROOT = Path('/sys/class/drm')
+
+
 def backlight():
-    devices = sorted(Path('/sys/class/backlight').glob('*'))
+    devices = sorted(BACKLIGHT_ROOT.glob('*'))
     preferred = config().get('backlight_device', '')
-    choices = [p for p in devices if p.name == preferred]
-    if not choices and len(devices)==1:
-        choices = devices
+    if preferred:
+        choices = [p for p in devices if p.name == preferred]
+    else:
+        choices = devices if len(devices) == 1 else []
     if not choices:
-        raise RuntimeError('Sin backlight compatible o selección ambigua; configura backlight_device')
+        raise RuntimeError('Sin backlight de portátil disponible' if not devices else
+                           'Selecciona backlight_device en settings.local.json')
     return choices[0], [p.name for p in devices]
 
-def brightness_state():
-    p, devices = backlight()
-    maximum = int((p/'max_brightness').read_text())
-    value = int((p/'brightness').read_text())
-    external=external_brightness()
-    return dict(available=True, percent=round(value*100/maximum), device=p.name, devices=devices,
-        external=external, message='Brillo físico · notebook y monitor DDC/CI')
 
-def external_brightness(force=False):
-    connector=config().get('external_connector', '')
-    if not connector:
-        connected = [p.name.split('-', 1)[1] for p in Path('/sys/class/drm').glob('card*-*')
-            if (p/'status').exists() and (p/'status').read_text().strip() == 'connected'
-            and not p.name.split('-', 1)[1].startswith(('eDP-', 'LVDS-', 'DSI-'))]
-        connector = connected[0] if len(connected) == 1 else ''
-    cache=RUN/'ddc-state.json'
+def internal_brightness():
+    state = dict(available=False, percent=0, device='—', devices=[], message='Sin pantalla de portátil')
     try:
-        saved=json.loads(cache.read_text())
-        if not force and time.time()-saved['time']<15: return saved['state']
-    except (OSError,ValueError,KeyError): pass
-    state=dict(available=False,percent=0,bus='',name=connector,message='Monitor externo: pendiente DDC/CI')
-    try:
-        connections=[p for p in Path('/sys/class/drm').glob('card*-'+connector) if (p/'status').read_text().strip()=='connected']
-        if len(connections)!=1: raise RuntimeError('Monitor externo no conectado')
-        bus=(connections[0]/'ddc').resolve().name
-        if not re.fullmatch(r'i2c-\d+',bus): raise RuntimeError('Sin bus DDC identificable')
-        state['bus']=bus[4:]
-        if not shutil.which('ddcutil'): raise RuntimeError('Falta ddcutil y acceso I²C; ver README')
-        if not os.access('/dev/'+bus,os.R_OK|os.W_OK): raise RuntimeError('Sin acceso a /dev/'+bus+'; ver README')
-        raw=command(['ddcutil','--bus',state['bus'],'--brief','getvcp','10'],timeout=5)
-        match=re.search(r'VCP\s+10\s+C\s+(\d+)\s+(\d+)',raw)
-        if not match or int(match[2])<=0: raise RuntimeError('El monitor no respondió a brillo DDC/CI')
-        state.update(available=True,percent=round(int(match[1])*100/int(match[2])),maximum=int(match[2]),message='DDC/CI conectado')
-    except Exception as e: state['message']=str(e)
-    cache.write_text(json.dumps(dict(time=time.time(),state=state)))
+        p, devices = backlight()
+        maximum = int((p / 'max_brightness').read_text())
+        value = int((p / 'brightness').read_text())
+        if maximum <= 0 or not 0 <= value <= maximum:
+            raise RuntimeError('Lectura de backlight inválida')
+        if not shutil.which('brightnessctl'):
+            raise RuntimeError('Falta brightnessctl para controlar la pantalla del portátil')
+        state.update(available=True, percent=round(value * 100 / maximum), device=p.name, devices=devices, message='Backlight conectado')
+    except (OSError, ValueError, RuntimeError) as error:
+        state['message'] = str(error)
     return state
 
-def set_displays(target):
-    p,_=backlight()
-    ext=external_brightness()
-    if ext['available']:
-        command(['ddcutil','--bus',ext['bus'],'setvcp','10',str(round(target*ext['maximum']/100))],timeout=5)
-        # Confirmed write: retain the bus/maximum and avoid a getvcp round-trip
-        # on every drag event. Periodic reads still reconcile hardware changes.
-        ext = dict(ext, percent=round(target*ext['maximum']/100)*100/ext['maximum'])
-        ext['percent'] = round(ext['percent'])
-        cache = RUN/'ddc-state.json'
-        tmp = cache.with_suffix(f'.{os.getpid()}.tmp')
-        tmp.write_text(json.dumps(dict(time=time.time(), state=ext)))
+
+def brightness_state():
+    internal = internal_brightness()
+    external = external_brightness()
+    primary = internal if internal['available'] else external
+    available = internal['available'] or external['available']
+    minimum = max(1, min(100, int(config().get('brightness_min', 5))))
+    return dict(available=available, percent=primary['percent'], minimum=minimum,
+                device=internal['device'] if internal['available'] else external.get('name', '—'),
+                devices=internal['devices'], internal=internal, external=external,
+                message='Brillo físico · pantallas disponibles' if available else external['message'])
+
+
+def connected_external_displays():
+    displays = []
+    for path in sorted(DRM_ROOT.glob('card*-*')):
+        try:
+            connector = path.name.split('-', 1)[1]
+            if not connector.startswith(('eDP-', 'LVDS-', 'DSI-')) and (path / 'status').read_text().strip() == 'connected':
+                displays.append(path)
+        except (OSError, IndexError):
+            continue
+    return displays
+
+
+def detected_ddc_bus(raw, display, single_connector):
+    """Use a DRM match, or the sole DDC display when there is one connector.
+
+    NVIDIA can omit the connector's sysfs ddc symlink. Never pick the first
+    bus arbitrarily when multiple monitors were detected.
+    """
+    choices = []
+    for block in re.split(r'(?m)(?=^(?:Display \d+|Invalid display))', raw):
+        if not re.match(r'^Display \d+\b', block):
+            continue
+        bus = re.search(r'I2C bus:\s*/dev/i2c-(\d+)\b', block)
+        connector = re.search(r'DRM[_ ]connector:\s*(\S+)', block, re.I)
+        if bus:
+            choices.append((bus[1], connector[1] if connector else ''))
+    matched = [bus for bus, connector in choices if connector in (display.name, display.name.split('-', 1)[1])]
+    if len(matched) == 1:
+        return matched[0]
+    if len(choices) == 1 and single_connector and not choices[0][1]:
+        return choices[0][0]
+    if not choices:
+        raise RuntimeError('No hay un monitor DDC/CI controlable; activa DDC/CI en el menú del monitor y comprueba el acceso I²C')
+    raise RuntimeError('No se pudo asociar el bus DDC al monitor; configura ddc_bus en settings.local.json')
+
+
+def cache_ddc(state, identity):
+    cache = RUN / 'ddc-state.json'
+    tmp = cache.with_suffix(f'.{os.getpid()}.tmp')
+    try:
+        tmp.write_text(json.dumps(dict(time=time.time(), identity=identity, state=state)))
         tmp.replace(cache)
-    command(['brightnessctl','-d',p.name,'set',f'{target}%'])
-    if not ext['available']:
-        message('brightness','Notebook actualizado. Monitor externo: '+ext['message'])
+    except OSError:
+        # The cache is an optimization. An unavailable cache must not hide a
+        # valid hardware reading or the actual DDC/CI diagnostic.
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
+def external_brightness(force=False):
+    cfg = config()
+    displays = connected_external_displays()
+    preferred = cfg.get('external_connector', '')
+    choices = [p for p in displays if p.name.split('-', 1)[1] == preferred] if preferred else displays
+    connector = preferred or (choices[0].name.split('-', 1)[1] if len(choices) == 1 else '')
+    # Include EDID and connector selection in the cache key: a hotplug or a
+    # changed setting must not reuse the previous monitor's bus/brightness.
+    identity = [preferred, str(cfg.get('ddc_bus', ''))]
+    for display in displays:
+        try:
+            edid = (display / 'edid').read_bytes().hex()
+        except OSError:
+            edid = ''
+        identity.append([display.name, edid])
+    cache = RUN / 'ddc-state.json'
+    try:
+        saved = json.loads(cache.read_text())
+        if not force and saved.get('identity') == identity and time.time() - saved['time'] < 15:
+            return saved['state']
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    state = dict(available=False, percent=0, bus='', name=connector, identity=identity,
+                 message='Monitor externo: DDC/CI no disponible')
+    try:
+        if len(choices) != 1:
+            raise RuntimeError('Varios monitores externos: selecciona external_connector en settings.local.json' if len(choices) > 1 else 'No hay un monitor externo conectado con esa selección')
+        if not shutil.which('ddcutil'):
+            raise RuntimeError('Falta ddcutil para controlar el monitor externo')
+        display = choices[0]
+        configured_bus = str(cfg.get('ddc_bus', '')).strip()
+        direct = (display / 'ddc').resolve().name
+        if configured_bus:
+            if not re.fullmatch(r'\d{1,4}', configured_bus):
+                raise RuntimeError('ddc_bus debe ser el número del bus I²C')
+            bus = configured_bus
+        elif re.fullmatch(r'i2c-\d+', direct):
+            bus = direct[4:]
+        else:
+            raw = command(['ddcutil', 'detect', '--brief'], timeout=12)
+            bus = detected_ddc_bus(raw, display, len(displays) == 1)
+        state['bus'] = bus
+        node = '/dev/i2c-' + bus
+        if not os.path.exists(node):
+            raise RuntimeError(f'No existe {node}; comprueba que i2c-dev esté cargado')
+        if not os.access(node, os.R_OK | os.W_OK):
+            raise RuntimeError(f'Sin acceso a {node}; revisa las reglas udev de ddcutil')
+        raw = command(['ddcutil', '--bus', bus, '--brief', 'getvcp', '10'], timeout=5)
+        match = re.search(r'VCP\s+10\s+C\s+(\d+)\s+(\d+)', raw)
+        if not match or not 0 <= int(match[1]) <= int(match[2]) or int(match[2]) <= 0:
+            raise RuntimeError('El monitor no respondió a brillo DDC/CI')
+        state.update(available=True, percent=round(int(match[1]) * 100 / int(match[2])),
+                     maximum=int(match[2]), message='DDC/CI conectado')
+    except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired) as error:
+        state['message'] = str(error)
+    cache_ddc(state, identity)
+    return state
+
+
+def set_displays(target):
+    target = numeric(str(target))
+    updated, failures = [], []
+    ext = external_brightness()
+    if ext['available']:
+        try:
+            value = round(target * ext['maximum'] / 100)
+            command(['ddcutil', '--bus', ext['bus'], 'setvcp', '10', str(value)], timeout=5)
+            # Cache only a confirmed write; do not issue getvcp on each drag.
+            ext = dict(ext, percent=round(value * 100 / ext['maximum']))
+            cache_ddc(ext, ext.get('identity', []))
+            updated.append('Monitor')
+        except (OSError, RuntimeError, subprocess.TimeoutExpired) as error:
+            failures.append('Monitor: ' + str(error))
+            cache_ddc(dict(ext, available=False, message=str(error)), ext.get('identity', []))
+    try:
+        p, _ = backlight()
+    except RuntimeError as error:
+        p = None
+        if not ext['available']:
+            failures.append(str(error))
+    if p is not None:
+        try:
+            command(['brightnessctl', '-d', p.name, 'set', f'{target}%'])
+            updated.append('Portátil')
+        except (OSError, RuntimeError, subprocess.TimeoutExpired) as error:
+            failures.append('Portátil: ' + str(error))
+    if not updated:
+        raise RuntimeError('; '.join(failures + ([] if ext['available'] else [ext['message']])))
+    if not ext['available'] and p is not None and connected_external_displays():
+        failures.append(ext['message'])
+    message('brightness', '; '.join(failures))
+
 
 def profiles_state():
     props=dbus('net.hadess.PowerProfiles','/net/hadess/PowerProfiles','org.freedesktop.DBus.Properties','GetAll',GLib.Variant('(s)',('net.hadess.PowerProfiles',)))[0]
@@ -356,7 +481,7 @@ DEFAULTS = {
     'power':dict(available=False,pending='',confirmation=''),
     'volume':dict(available=False,percent=0,mute=False,sinks=[],mono=False),
     'wifi':dict(available=False,enabled=False,ssid='Sin conexión',status='No disponible',signal=0,networks=[]),
-    'brightness':dict(available=False,percent=0,device='—',devices=[],message='No disponible',external=dict(available=False,percent=0,message='No disponible')),
+    'brightness':dict(available=False,percent=0,minimum=5,device='—',devices=[],message='No disponible',internal=dict(available=False,percent=0,message='Sin pantalla de portátil'),external=dict(available=False,percent=0,message='No disponible')),
     'bluetooth':dict(available=False,enabled=False,status='No disponible',scanning=False,devices=[])}
 
 def status(module):
@@ -456,8 +581,10 @@ def locked_action(module, act, value, lock):
                 command(['wpctl','set-volume','-l','1','@DEFAULT_AUDIO_SINK@',f'{target}%'])
         elif module=='brightness':
             state = brightness_state()
+            if not state['available']:
+                raise RuntimeError(state['message'])
             target = state['percent']+target if act=='step' else target
-            target = min(100,max(config().get('brightness_min',5),target))
+            target = min(100,max(state['minimum'],target))
             ext=state['external']
             if round(target)!=state['percent'] or (ext['available'] and round(target)!=ext['percent']):
                 set_displays(target)
@@ -477,7 +604,7 @@ def locked_action(module, act, value, lock):
             if module=='volume':
                 command(['wpctl','set-volume','-l','1','@DEFAULT_AUDIO_SINK@',f'{latest}%'])
             elif module=='brightness' and state['available']:
-                latest=max(config().get('brightness_min',5),latest)
+                latest=max(state['minimum'],latest)
                 set_displays(latest)
             elif module=='nightlight':
                 command(['hyprctl','hyprsunset','gamma',str(100-min(80,latest))])
@@ -491,6 +618,10 @@ def locked_action(module, act, value, lock):
         command(['powerprofilesctl','set',value])
         message(module,'Perfil cambiado. La autonomía se recalcula con el consumo real.')
         return
+    elif module=='brightness':
+        if act != 'refresh': raise ValueError('Acción de brillo no válida')
+        external_brightness(force=True)
+        notify_refresh(module)
     elif module=='nightlight':
         if act!='warm': raise ValueError('Acción no válida')
         ensure_sunset()

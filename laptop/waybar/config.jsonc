@@ -54,6 +54,7 @@
       "class<nwg-displays>": "󰍹",
       "class<nwg-look>": "󰔴",
       "class<waypaper>": "󰸉",
+      "class<io.local.WallpaperStudio>": "󰸉",
       "class<org.gnome.Calendar>": "󰃭",
       "class<org.gnome.Loupe>": "󰋩",
       "class<Loupe>": "󰋩",
@@ -142,7 +143,7 @@
   },
   "custom/wallpaper": {
     "format": "󰸉",
-    "on-click": "~/.config/hypr/launch-in-workspace.py waypaper",
+    "on-click": "~/.config/hypr/launch-in-workspace.py wallpaper-studio",
     "tooltip-format": "Wallpaper"
   },
   "custom/zen": {

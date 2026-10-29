@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Stream Waybar Editor's effective contour and derived palette without reloading Eww."""
 import json
+import os
 from pathlib import Path
 import re
 import signal
 import sys
 import time
-from monitor_theme import palette
+from monitor_theme import palette, wallpaper_colors
 
 NUMBER = r'-?\d+(?:\.\d+)?'
 COLOR = r'(?:\#[0-9a-fA-F]{6}|\#[0-9a-fA-F]{3}|rgba?\([\d.,\s]+\))'
@@ -48,8 +49,11 @@ def valid_shadow(value):
 
 def contour(text):
     """Use rendered CSS, not stale original rules or a guessed glow formula."""
+    colors = wallpaper_colors(text)
     managed = re.search(r'/\* waybar-editor:begin \*/(.*?)/\* waybar-editor:end \*/', text, re.S)
     if not managed:
+        if colors and '/* waybar-editor:begin */' not in text and '/* waybar-editor:end */' not in text:
+            return colored_contour(FALLBACK, colors)
         raise ValueError('Incomplete Waybar Editor block')
     metadata = re.search(r'/\* waybar-editor:appearance (.*?) \*/', managed[1], re.S)
     if not metadata or not isinstance(json.loads(metadata[1]), dict):
@@ -72,13 +76,25 @@ def contour(text):
     if not match or not 0 <= float(match[1]) <= 100:
         raise ValueError('Invalid border radius')
     shadow = valid_shadow(declarations['box-shadow'])
-    return f'border: {border}; border-radius: {radius}; box-shadow: {shadow};'
+    style = f'border: {border}; border-radius: {radius}; box-shadow: {shadow};'
+    return colored_contour(style, colors) if colors else style
 
 
-def styles(path, interval=0.5):
+def colored_contour(style, colors):
+    accent = colors['accent']
+    rgb = ', '.join(str(int(accent[i:i + 2], 16)) for i in (1, 3, 5))
+    style = re.sub(r'border: ([\d.]+)px solid .*?;', rf'border: \1px solid {accent};', style)
+    return re.sub(r'box-shadow: .*?;', f'box-shadow: 0 0 6px rgba({rgb}, 0.60), inset 0 0 4px rgba({rgb}, 0.22);', style)
+
+
+def tokens(text):
+    return palette(contour(text), wallpaper_colors(text))
+
+
+def themes(path, interval=0.5):
     """Only stat an unchanged file; detect atomic replacements and retain last good style."""
     previous_signature = object()
-    previous_style = None
+    previous_tokens = None
     while True:
         try:
             stat = path.stat()
@@ -88,20 +104,25 @@ def styles(path, interval=0.5):
         if signature != previous_signature:
             previous_signature = signature
             try:
-                style = contour(path.read_text())
-            except (OSError, UnicodeError, ValueError, KeyError):
-                style = previous_style or FALLBACK
-            if style != previous_style:
-                previous_style = style
-                yield style
+                theme = tokens(path.read_text())
+            except (OSError, UnicodeError, ValueError, KeyError, TypeError):
+                theme = previous_tokens or palette(FALLBACK)
+            if theme != previous_tokens:
+                previous_tokens = theme
+                yield theme
         time.sleep(interval)
+
+
+def styles(path, interval=0.5):
+    for theme in themes(path, interval):
+        yield theme['style']
 
 
 if __name__ == '__main__':
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
-    path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path.home() / '.config/waybar/style.css'
+    path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(os.environ.get('XDG_CONFIG_HOME') or Path.home() / '.config') / 'waybar/style.css'
     try:
-        for style in styles(path):
-            print(json.dumps(palette(style)), flush=True)
+        for theme in themes(path):
+            print(json.dumps(theme), flush=True)
     except (BrokenPipeError, KeyboardInterrupt):
         pass
