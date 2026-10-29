@@ -152,6 +152,7 @@ if [[ "$MODE" == --install ]]; then
         sudo cp -a /usr/share/sddm/themes/pixie "$BACKUP/pixie-theme"
     fi
     sudo rsync -a --chown=root:root "$REPO_DIR/$PROFILE/sddm/pixie/" /usr/share/sddm/themes/pixie/
+    bash "$REPO_DIR/$PROFILE/apps/wallpaper-studio/setup-login-theme.sh"
     sudo install -Dm644 "$REPO_DIR/$PROFILE/system/zram-generator.conf" /etc/systemd/zram-generator.conf
     sudo install -Dm644 "$REPO_DIR/$PROFILE/system/99-swappiness.conf" /etc/sysctl.d/99-swappiness.conf
     sudo systemctl daemon-reload

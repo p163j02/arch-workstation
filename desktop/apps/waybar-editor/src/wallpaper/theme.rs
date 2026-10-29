@@ -78,6 +78,7 @@ pub(super) struct Paths {
     pub style: PathBuf,
     pub hypr: PathBuf,
     pub control_style: PathBuf,
+    pub kitty: PathBuf,
 }
 impl Paths {
     pub fn discover() -> Self {
@@ -96,6 +97,7 @@ impl Paths {
             style: config.join("waybar/style.css"),
             hypr: config.join("hypr/local.conf"),
             control_style: config.join("eww/control-center/wallpaper-studio.scss"),
+            kitty: config.join("kitty/kitty.conf"),
         }
     }
     pub fn read_state(&self) -> Result<StateFile> {
@@ -294,6 +296,18 @@ fn apply_with(
             ));
         }
     }
+    if paths.state.with_file_name("login-theme").is_dir()
+        && let Err(error) = super::login::sync(paths, image, palette)
+    {
+        warnings.push(format!(
+            "Fondo aplicado; no se pudo sincronizar SDDM/Hyprlock: {error:#}"
+        ));
+    }
+    if let Err(error) = super::terminal::sync(paths, palette, &command) {
+        warnings.push(format!(
+            "Fondo aplicado; no se pudo sincronizar Kitty: {error:#}"
+        ));
+    }
     Ok(warnings)
 }
 
@@ -316,7 +330,7 @@ fn restore_optional(path: &Path, data: Option<&[u8]>) -> Result<()> {
     }
 }
 
-fn checked_command(program: &str, args: &[&str]) -> Result<()> {
+pub(super) fn checked_command(program: &str, args: &[&str]) -> Result<()> {
     let output = Command::new(program)
         .args(args)
         .output()
@@ -340,7 +354,7 @@ fn checked_command(program: &str, args: &[&str]) -> Result<()> {
     Ok(())
 }
 
-fn replace_block(text: &str, start: &str, end: &str, content: &str) -> Result<String> {
+pub(super) fn replace_block(text: &str, start: &str, end: &str, content: &str) -> Result<String> {
     let mut output = text.to_owned();
     loop {
         match (output.find(start), output.find(end)) {
@@ -519,7 +533,11 @@ fn hex_rgba(color: &str, alpha: f32) -> String {
 }
 
 fn write_atomic(path: &Path, data: &[u8]) -> Result<()> {
-    use std::os::unix::fs::OpenOptionsExt;
+    write_atomic_with_mode(path, data, 0o600)
+}
+
+pub(super) fn write_atomic_with_mode(path: &Path, data: &[u8], mode: u32) -> Result<()> {
+    use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
     let parent = path.parent().context("Ruta sin directorio padre")?;
     fs::create_dir_all(parent)?;
     if fs::symlink_metadata(path).is_ok_and(|m| m.file_type().is_symlink()) {
@@ -534,9 +552,10 @@ fn write_atomic(path: &Path, data: &[u8]) -> Result<()> {
         let mut file = OpenOptions::new()
             .write(true)
             .create_new(true)
-            .mode(0o600)
+            .mode(mode)
             .open(&temp)?;
         file.write_all(data)?;
+        file.set_permissions(fs::Permissions::from_mode(mode))?;
         file.sync_all()?;
         fs::rename(&temp, path)?;
         Ok(())
@@ -561,6 +580,7 @@ mod tests {
             style: dir.path().join("waybar/style.css"),
             hypr: dir.path().join("hypr/local.conf"),
             control_style: dir.path().join("eww/control-center/wallpaper-studio.scss"),
+            kitty: dir.path().join("kitty/kitty.conf"),
         };
         fs::create_dir_all(paths.style.parent().unwrap()).unwrap();
         fs::write(
@@ -849,6 +869,49 @@ mod tests {
         assert_eq!(warnings.len(), 1);
         assert!(warnings[0].contains("paneles de Eww"));
         assert!(paths.read_state().unwrap().current.is_some());
+    }
+
+    #[test]
+    fn terminal_theme_updates_only_after_successful_wallpaper_and_reports_reload_failure() {
+        let (_dir, paths, image, palette) = fixture();
+        fs::create_dir_all(paths.kitty.parent().unwrap()).unwrap();
+        let original = "font_size 10.5\nbackground_opacity 0.82\n";
+        fs::write(&paths.kitty, original).unwrap();
+        assert!(
+            apply_with(
+                &paths,
+                &image,
+                &palette,
+                &Transition::default(),
+                |program, _| {
+                    assert_eq!(program, "awww");
+                    bail!("daemon unavailable");
+                }
+            )
+            .is_err()
+        );
+        assert_eq!(fs::read_to_string(&paths.kitty).unwrap(), original);
+        let warnings = apply_with(
+            &paths,
+            &image,
+            &palette,
+            &Transition::default(),
+            |program, args| {
+                if program == "pkill" && args.contains(&"kitty") {
+                    assert!(
+                        fs::read_to_string(&paths.kitty)
+                            .unwrap()
+                            .contains("background #10131d")
+                    );
+                    bail!("reload unavailable");
+                }
+                Ok(())
+            },
+        )
+        .unwrap();
+        assert!(paths.read_state().unwrap().current.is_some());
+        assert_eq!(warnings.len(), 1);
+        assert!(warnings[0].contains("Kitty"));
     }
 
     #[test]

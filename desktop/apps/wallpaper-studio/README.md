@@ -1,8 +1,8 @@
 # Wallpaper Studio
 
-Gestor de fondos en **Rust + GTK4 + libadwaita** para Hyprland, incluido en Arch Workstation para **laptop y desktop**. Ofrece imágenes estáticas y GIF animados, vista previa, búsqueda, paletas editables por fondo y transiciones con `awww`.
+Gestor de fondos en **Rust + GTK4 + libadwaita** para Hyprland del perfil **desktop** de Arch Workstation. Ofrece imágenes estáticas y GIF animados, vista previa, búsqueda, paletas editables por fondo y transiciones con `awww`. El perfil laptop mantiene su [propia versión y documentación](../../../laptop/apps/wallpaper-studio/README.md).
 
-La paleta se aplica a los escritorios y lanzadores de Waybar, los bordes de Hyprland, el monitor de recursos Eww y los paneles del centro de control. Los fondos y las paletas personales se guardan en el equipo; no se copian del desktop a la laptop.
+La paleta se aplica a los escritorios y lanzadores de Waybar, los bordes de Hyprland, el monitor de recursos Eww, los paneles del centro de control y la terminal Kitty. También sincroniza el fondo y los colores de SDDM/Pixie y Hyprlock después de preparar la integración. Los fondos y las paletas personales se guardan en el equipo; no se copian del desktop a la laptop.
 
 ## Instalación en un equipo nuevo
 
@@ -12,7 +12,7 @@ Desde la copia actualizada de este repositorio, ejecuta como tu usuario:
 bash install.sh desktop
 ```
 
-El instalador completo instala las dependencias, compila la aplicación desde código fuente con `Cargo.lock`, crea el acceso **Wallpaper Studio** en Rofi y conecta el botón de fondos de Waybar. También configura `awww-daemon` y la restauración del fondo al iniciar sesión o cambiar monitores. Revisa los requisitos del [README principal](../../../README.md) antes de instalar el entorno completo.
+El instalador completo instala las dependencias, compila la aplicación desde código fuente con `Cargo.lock`, crea el acceso **Wallpaper Studio** en Rofi y conecta el botón de fondos de Waybar. También configura `awww-daemon`, la restauración del fondo al iniciar sesión o cambiar monitores y la integración con SDDM/Pixie y Hyprlock. Revisa los requisitos del [README principal](../../../README.md) antes de instalar el entorno completo.
 
 ## Actualizar un desktop que ya usa Arch Workstation
 
@@ -40,7 +40,34 @@ Elige un fondo, revisa o edita la paleta y pulsa **Aplicar fondo y paleta**. **E
 wallpaper-studio --help
 wallpaper-studio --apply /ruta/al/fondo.gif
 wallpaper-studio --restore
+wallpaper-studio --sync-login
+wallpaper-studio --sync-terminal
 ```
+
+## Colores de la terminal
+
+En desktop, **Aplicar fondo y paleta** también actualiza Kitty: fondo, texto, cursor, selección, pestañas, bordes y los 16 colores ANSI. Los rojos, verdes y amarillos mantienen su significado para errores, confirmaciones y avisos. Conserva la fuente, transparencia, márgenes y atajos existentes.
+
+La app añade o actualiza un bloque `# wallpaper-studio:begin` / `# wallpaper-studio:end` al final de `~/.config/kitty/kitty.conf` y solicita una recarga con `SIGUSR1`. Las ventanas abiertas y las nuevas usan los colores guardados, sin cerrar sus procesos. Si Kitty aún no tiene configuración, no crea una. Con `XDG_CONFIG_HOME` personalizado utiliza ese directorio.
+
+Para sincronizar solo la terminal con la selección guardada, ejecuta `wallpaper-studio --sync-terminal`. Para volver a tus colores anteriores, retira ese bloque administrado y recarga Kitty con Ctrl+Shift+F5.
+
+## Fondo y colores del acceso y del bloqueo
+
+En un desktop ya instalado, actualiza el binario, aplica un fondo en la app y ejecuta:
+
+```sh
+bash desktop/apps/wallpaper-studio/setup-login-theme.sh
+wallpaper-studio --sync-login
+```
+
+La preparación requiere `sudo` una vez, Pixie instalado y seleccionado en SDDM. Respalda el tema instalado y `~/.config/hypr/hyprlock.conf` en un directorio `login-backup.XXXXXXXX/` dentro del estado de Wallpaper Studio. Sustituye la configuración activa del bloqueo por `desktop/hypr/hyprlock.conf`, conservando el diseño del desktop. No reinicia SDDM ni cierra la sesión.
+
+Después, **Aplicar fondo y paleta** actualiza ambas pantallas como usuario normal. SDDM lee únicamente `background.png` y `theme.conf`, exportados con permisos de lectura en `/var/lib/wallpaper-studio/<uid>/`; los originales y el estado personal conservan sus permisos. Los GIF usan un fotograma estático en el acceso y el bloqueo. `--sync-login` resincroniza solo estas pantallas con la selección guardada.
+
+Para comprobarlo, revisa `~/.local/state/wallpaper-studio/login-theme` y `/usr/share/sddm/themes/pixie/theme.conf.user`: deben enlazar al directorio público y a su `theme.conf`. El bloque administrado al principio de Hyprlock debe apuntar al PNG exportado. Si reinstalas la plantilla de Hyprlock, vuelve a ejecutar la preparación.
+
+Para recuperar la configuración anterior, restaura `hyprlock.conf` desde el respaldo y, con `sudo`, `Main.qml` y `Clock.qml` en Pixie. Retira el enlace `theme.conf.user` y restaura la copia anterior si existía. Conserva el respaldo hasta verificar un inicio y desbloqueo reales.
 
 ## Código y dependencias
 

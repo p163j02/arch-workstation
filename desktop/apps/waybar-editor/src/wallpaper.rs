@@ -1,4 +1,6 @@
+mod login;
 mod palette;
+mod terminal;
 mod theme;
 
 use adw::prelude::*;
@@ -43,10 +45,28 @@ pub fn run() {
 
 fn cli(args: &[String]) -> Result<()> {
     let paths = Paths::discover();
+    if args == ["--sync-terminal"] {
+        if let Some(image) = paths.read_state()?.current {
+            let image = PathBuf::from(image);
+            return terminal::sync(
+                &paths,
+                &palette_for(&paths, &image)?,
+                theme::checked_command,
+            );
+        }
+        return Ok(());
+    }
+    if args == ["--sync-login"] {
+        if let Some(image) = paths.read_state()?.current {
+            let image = PathBuf::from(image);
+            return login::sync(&paths, &image, &palette_for(&paths, &image)?);
+        }
+        return Ok(());
+    }
     let image = match args {
         [flag] if flag == "--help" || flag == "-h" => {
             println!(
-                "Wallpaper Studio\n\nUso: wallpaper-studio\n     wallpaper-studio --apply RUTA\n     wallpaper-studio --restore\n\nFondos estáticos y GIF animados, paletas por imagen y transiciones.\nAplica a todos los monitores. Usa awww-daemon y Hyprland."
+                "Wallpaper Studio\n\nUso: wallpaper-studio\n     wallpaper-studio --apply RUTA\n     wallpaper-studio --restore\n     wallpaper-studio --sync-login\n     wallpaper-studio --sync-terminal\n\nFondos estáticos y GIF animados, paletas por imagen y transiciones.\nAplica a todos los monitores. Usa awww-daemon y Hyprland."
             );
             return Ok(());
         }
