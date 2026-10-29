@@ -1,6 +1,9 @@
 {
   "layer": "top",
-  "output": ["*"],
+  "output": [
+    "HDMI-A-1",
+    "eDP-1"
+  ],
   "position": "top",
   "height": 40,
   "margin-top": 0,
@@ -8,7 +11,7 @@
   "margin-right": 8,
   "spacing": 0,
   "modules-left": ["hyprland/workspaces"],
-  "modules-center": ["custom/virtualbox","custom/zen","custom/firefox","custom/terminal","custom/chatgpt","custom/claude-code","custom/discord","custom/steam","custom/files","custom/zed","custom/vscode","custom/antigravity","custom/spotify","custom/wallpaper"],
+  "modules-center": ["custom/virtualbox","custom/zen","custom/firefox","custom/terminal","custom/chatgpt","custom/claude-code","custom/discord","custom/steam","custom/files","custom/zed","custom/vscode","custom/antigravity","custom/spotify","custom/wallpaper-studio"],
   "modules-right": ["custom/media","backlight","tray","bluetooth","network","pulseaudio","custom/airpods","battery","custom/power","custom/clock"],
   "hyprland/workspaces": {
     "format": "{icon} {windows}",
@@ -54,7 +57,6 @@
       "class<nwg-displays>": "󰍹",
       "class<nwg-look>": "󰔴",
       "class<waypaper>": "󰸉",
-      "class<io.local.WallpaperStudio>": "󰸉",
       "class<org.gnome.Calendar>": "󰃭",
       "class<org.gnome.Loupe>": "󰋩",
       "class<Loupe>": "󰋩",
@@ -188,6 +190,7 @@
     "tooltip-format": "Zed"
   },
   "backlight": {
+    "device": "amdgpu_bl1",
     "format": "{icon} {percent}%",
     "format-icons": [
       "󰃞",
@@ -222,7 +225,7 @@
   //     "locale": "es_CL.UTF-8"
   // },
   "custom/clock": {
-    "exec": "~/.config/waybar/scripts/clock.py",
+    "exec": "LC_TIME=es_CL.utf8 date '+%a %d %b  %H:%M'",
     "on-click": "~/.config/eww/control-center/scripts/popup-manager.py calendar",
     "interval": 60,
     "format": "{}",
@@ -306,4 +309,14 @@
     "icon-size": 16,
     "spacing": 8
   }
+,
+  "custom/wallpaper-studio": {
+  "format": "󱇤"
+,
+  "tooltip-format": "Wallpaper Studio"
+,
+  "tooltip": true
+,
+  "on-click": "@HOME@/.config/hypr/launch-in-workspace.py @HOME@/.local/bin/wallpaper-studio"
+}
 }

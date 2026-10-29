@@ -235,7 +235,7 @@ class InstallTests(unittest.TestCase):
                                 if key.startswith('custom/wallpaper'))
                 self.assertIn('wallpaper-studio', launcher)
                 self.assertIn('wallpaper-studio --restore', (config / 'hypr/session-start.sh').read_text())
-                self.assertIn('io.local.WallpaperStudio', (config / 'hypr/hyprland.conf').read_text())
+                self.assertIn('io.local.WallpaperStudio', (config / 'hypr/hyprland.lua').read_text())
                 self.assertIn('@import "wallpaper-studio.scss";', (config / 'eww/control-center/eww.scss').read_text())
                 self.assertTrue((config / 'eww/control-center/wallpaper-studio.scss').is_file())
                 if profile == 'desktop':

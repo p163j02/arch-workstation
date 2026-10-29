@@ -104,16 +104,22 @@ require("lazy").setup({
     "nvim-treesitter/nvim-treesitter",
     build = ":TSUpdate",
     config = function()
-      require("nvim-treesitter").setup({})
-      require("nvim-treesitter").install({
-        "lua", "python", "javascript", "typescript",
-        "bash", "json", "html", "css", "markdown",
-      })
-      vim.api.nvim_create_autocmd("FileType", {
-        callback = function()
-          -- A parser can still be downloading on the first launch.
-          pcall(vim.treesitter.start)
-        end,
+      -- Intentamos cargar el módulo de forma segura
+      local status_ok, configs = pcall(require, "nvim-treesitter.configs")
+
+      -- Si el plugin no está descargado aún, salimos sin lanzar el error rojo
+      if not status_ok then
+        return
+      end
+
+      -- Si ya está instalado, aplicamos la configuración
+      configs.setup({
+        ensure_installed = {
+          "lua", "python", "javascript", "typescript",
+          "bash", "json", "html", "css", "markdown",
+        },
+        highlight = { enable = true },
+        indent    = { enable = true },
       })
     end,
   },
@@ -124,20 +130,24 @@ require("lazy").setup({
     dependencies = {
       "williamboman/mason.nvim",          -- Instalador de LSPs
       "williamboman/mason-lspconfig.nvim",
-      "hrsh7th/cmp-nvim-lsp",
     },
     config = function()
       require("mason").setup({
         ui = { border = "rounded" },
       })
-      local capabilities = require("cmp_nvim_lsp").default_capabilities()
-      vim.lsp.config("*", { capabilities = capabilities })
-      vim.lsp.config("lua_ls", {
-        settings = { Lua = { diagnostics = { globals = { "vim" } } } },
-      })
       require("mason-lspconfig").setup({
         ensure_installed = { "lua_ls", "pyright", "ts_ls" },
-        automatic_enable = true,
+        automatic_installation = true,
+      })
+
+      local lspconfig = require("lspconfig")
+      local capabilities = require("cmp_nvim_lsp").default_capabilities()
+
+      lspconfig.pyright.setup({ capabilities = capabilities })  -- Python
+      lspconfig.ts_ls.setup({ capabilities = capabilities })    -- JS/TS
+      lspconfig.lua_ls.setup({                                   -- Lua
+        capabilities = capabilities,
+        settings = { Lua = { diagnostics = { globals = { "vim" } } } },
       })
     end,
   },

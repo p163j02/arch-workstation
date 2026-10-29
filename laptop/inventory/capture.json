@@ -1,0 +1,9 @@
+{
+  "captured_utc": "2026-10-29T08:20:37.656887+00:00",
+  "official_packages": 158,
+  "aur_packages": 16,
+  "wallpapers": 15,
+  "omitted_private_or_compiled": [
+    "eww/os"
+  ]
+}

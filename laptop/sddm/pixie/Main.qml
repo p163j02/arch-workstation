@@ -100,7 +100,7 @@ Rectangle {
     }
 
     // Dynamic Color Configuration
-    property color extractedAccent: config.accentColor
+    property color extractedAccent: config.primaryColor
     property color baseColor: config.backgroundColor
     property color surfaceColor: Qt.lighter(baseColor, 1.3)
     property color surfaceVariantColor: Qt.lighter(baseColor, 1.6)
@@ -293,7 +293,7 @@ Rectangle {
 
     Text {
         id: dateText
-        text: Qt.formatDateTime(new Date(), "dddd, MMMM d")
+        text: Qt.formatDateTime(new Date(), "dddd, d 'de' MMMM", Qt.locale("es_ES"))
         color: container.extractedAccent
         font.pixelSize: 22
         font.family: fontRegular.name
@@ -325,7 +325,7 @@ Rectangle {
         }
 
         Text {
-            text: "Press any key to unlock"
+            text: "Pulsa cualquier tecla para iniciar sesión"
             color: config.textColor
             font.pixelSize: 16
             anchors {
@@ -480,7 +480,7 @@ Rectangle {
 
                     Rectangle {
                         anchors.fill: parent
-                        color: "white"
+                        color: config.textColor
                         opacity: userClickArea.pressed ? 0.2 : 0
                         radius: 12
                         Behavior on opacity { NumberAnimation { duration: 100 } }
@@ -497,12 +497,12 @@ Rectangle {
                                 var edit = userModel.data(modelIdx, Qt.EditRole);
                                 var nr = userModel.data(modelIdx, Qt.UserRole + 1);
                                 var realName = userModel.data(modelIdx, Qt.UserRole + 2);
-                                var finalName = display ? display.toString() : (realName ? realName.toString() : (nr ? nr.toString() : (edit ? edit.toString() : "User")));
+                                var finalName = display ? display.toString() : (realName ? realName.toString() : (nr ? nr.toString() : (edit ? edit.toString() : "Usuario")));
                                 return cleanName(finalName) + (userModel.count > 1 ? " ▾" : "");
                             }
-                            return cleanName(sddm.lastUser ? sddm.lastUser : "User");
+                            return cleanName(sddm.lastUser ? sddm.lastUser : "Usuario");
                         }
-                        color: "white"
+                        color: config.textColor
                         font.pixelSize: 24
                         font.weight: Font.Bold
                         font.family: fontRegular.name
@@ -547,12 +547,12 @@ Rectangle {
                                     var n = sessionModel.data(modelIdx, Qt.UserRole + 4);
                                     var f = sessionModel.data(modelIdx, Qt.UserRole + 2);
                                     var d = sessionModel.data(modelIdx, Qt.DisplayRole);
-                                    var finalName = n ? n.toString() : (f ? f.toString() : (d ? d.toString() : "Session " + (idx + 1)));
+                                    var finalName = n ? n.toString() : (f ? f.toString() : (d ? d.toString() : "Sesión " + (idx + 1)));
                                     return cleanName(finalName) + (sessionModel.count > 1 ? " ▾" : "");
                                 }
                                 return "Hyprland";
                             }
-                            color: "white"
+                            color: config.textColor
                             font.pixelSize: 13
                             font.weight: Font.Medium
                         }
@@ -572,7 +572,7 @@ Rectangle {
                     Layout.fillWidth: true
                     horizontalAlignment: Text.AlignHCenter
                     font.pixelSize: 18
-                    color: "white"
+                    color: config.textColor
                     focus: loginState.visible
                     enabled: !container.isLoggingIn
 
@@ -585,8 +585,8 @@ Rectangle {
                     }
 
                     Text {
-                        text: "Enter Password"
-                        color: "gray"
+                        text: "Introduce tu contraseña"
+                        color: Qt.darker(config.textColor, 1.3)
                         font.pixelSize: 16
                         visible: !parent.text
                         anchors.centerIn: parent
@@ -598,7 +598,7 @@ Rectangle {
 
                 Text {
                     id: numLockIndicator
-                    text: "Num Lock is on"
+                    text: "Bloq Num está activado"
                     color: container.extractedAccent
                     font.pixelSize: 14
                     font.family: fontRegular.name
@@ -622,7 +622,7 @@ Rectangle {
 
                     contentItem: Text {
                         text: container.isLoggingIn ? "⋯" : "→"
-                        color: "white"
+                        color: config.textColor
                         font.pixelSize: 32
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
@@ -718,7 +718,7 @@ Rectangle {
                                 var finalVal = d ? d.toString() : (n_r ? n_r.toString() : "U");
                                 return finalVal.charAt(0).toUpperCase();
                             }
-                            color: isCurrent ? baseColor : "white"
+                            color: isCurrent ? baseColor : config.textColor
                             font.pixelSize: 12
                             font.family: fontBold.name
                             font.weight: Font.Bold
@@ -735,7 +735,7 @@ Rectangle {
                             var e = userModel.data(mIdx, Qt.EditRole);
                             return cleanName(d ? d : (r ? r : (n_r ? n_r : e)));
                         }
-                        color: isCurrent ? "white" : (hovered ? "#DDDDDD" : "#AAAAAA")
+                        color: isCurrent ? config.textColor : (hovered ? Qt.darker(config.textColor, 1.1) : Qt.darker(config.textColor, 1.3))
                         font.pixelSize: 15
                         font.family: fontRegular.name
                         horizontalAlignment: Text.AlignHCenter
@@ -822,7 +822,7 @@ Rectangle {
                             var f_val = sessionModel.data(sessionModel.index(index, 0), Qt.UserRole + 2);
                             return cleanName(n_val ? n_val : f_val);
                         }
-                        color: isCurrent ? "white" : "#AAAAAA"
+                        color: isCurrent ? config.textColor : Qt.darker(config.textColor, 1.3)
                         font.pixelSize: 14
                         font.family: fontRegular.name
                         horizontalAlignment: Text.AlignHCenter

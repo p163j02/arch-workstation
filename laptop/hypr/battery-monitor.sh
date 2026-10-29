@@ -1,19 +1,10 @@
 #!/bin/bash
 
-BATTERY_DIR=""
-for supply in /sys/class/power_supply/*; do
-    if [[ -f "$supply/type" && "$(cat "$supply/type")" == Battery ]]; then
-        BATTERY_DIR="$supply"
-        break
-    fi
-done
-[[ -n "$BATTERY_DIR" ]] || exit 0
-
 LAST_NOTIFIED=100
 
 while true; do
-    BATTERY=$(cat "$BATTERY_DIR/capacity")
-    STATUS=$(cat "$BATTERY_DIR/status")
+    BATTERY=$(cat /sys/class/power_supply/BAT0/capacity)
+    STATUS=$(cat /sys/class/power_supply/BAT0/status)
 
     if [ "$STATUS" = "Charging" ]; then
         # Al conectar cargador, resetear para que avise de nuevo al desconectar
@@ -26,9 +17,7 @@ while true; do
             LAST_NOTIFIED=5
             sleep 60
             # Verificar que sigue descargando antes de suspender
-            if [[ "$(cat "$BATTERY_DIR/status")" == Discharging && "$(cat "$BATTERY_DIR/capacity")" -le 5 ]]; then
-                systemctl suspend
-            fi
+            [ "$(cat /sys/class/power_supply/BAT0/status)" = "Discharging" ] && systemctl suspend
 
         elif [ "$BATTERY" -le 10 ] && [ "$LAST_NOTIFIED" -gt 10 ]; then
             notify-send -u critical "󰁺 Batería muy baja" "${BATTERY}% — Conecta el cargador"

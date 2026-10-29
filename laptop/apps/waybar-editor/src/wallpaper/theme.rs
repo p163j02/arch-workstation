@@ -294,6 +294,13 @@ fn apply_with(
             ));
         }
     }
+    if paths.state.with_file_name("login-theme").is_dir()
+        && let Err(error) = super::login::sync(paths, image, palette)
+    {
+        warnings.push(format!(
+            "Fondo aplicado; no se pudo sincronizar SDDM/Hyprlock: {error:#}"
+        ));
+    }
     Ok(warnings)
 }
 
@@ -321,7 +328,7 @@ fn checked_command(program: &str, args: &[&str]) -> Result<()> {
         .args(args)
         .output()
         .with_context(|| format!("No se pudo ejecutar {program}"))?;
-    if !output.status.success() && !(program == "pkill" && output.status.code() == Some(1)) {
+    if !(output.status.success() || program == "pkill" && output.status.code() == Some(1)) {
         bail!(
             "{program}: {}",
             String::from_utf8_lossy(&output.stderr).trim()
@@ -519,7 +526,11 @@ fn hex_rgba(color: &str, alpha: f32) -> String {
 }
 
 fn write_atomic(path: &Path, data: &[u8]) -> Result<()> {
-    use std::os::unix::fs::OpenOptionsExt;
+    write_atomic_with_mode(path, data, 0o600)
+}
+
+pub(super) fn write_atomic_with_mode(path: &Path, data: &[u8], mode: u32) -> Result<()> {
+    use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
     let parent = path.parent().context("Ruta sin directorio padre")?;
     fs::create_dir_all(parent)?;
     if fs::symlink_metadata(path).is_ok_and(|m| m.file_type().is_symlink()) {
@@ -534,9 +545,10 @@ fn write_atomic(path: &Path, data: &[u8]) -> Result<()> {
         let mut file = OpenOptions::new()
             .write(true)
             .create_new(true)
-            .mode(0o600)
+            .mode(mode)
             .open(&temp)?;
         file.write_all(data)?;
+        file.set_permissions(fs::Permissions::from_mode(mode))?;
         file.sync_all()?;
         fs::rename(&temp, path)?;
         Ok(())

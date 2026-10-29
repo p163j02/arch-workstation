@@ -1,10 +1,10 @@
 ;; Isolated from existing desktop sysmon widgets; Eww 0.6 commit d87c2fd.
 (deflisten cc_volume :initial `{"available":false,"percent":0,"mute":false,"mono":false,"sinks":[],"error":"","busy":false}` `scripts/backend.py watch volume`)
 (deflisten cc_wifi :initial `{"available":false,"enabled":false,"ssid":"Sin conexión","status":"","signal":0,"networks":[],"error":"","busy":false,"spinner":"󰑓"}` `scripts/backend.py watch wifi`)
-(deflisten cc_brightness :initial `{"available":false,"percent":0,"minimum":5,"internal":{"available":false,"percent":0},"device":"—","message":"","error":"","busy":false,"external":{"available":false,"percent":0,"message":"Comprobando DDC/CI…"}}` `scripts/backend.py watch brightness`)
+(deflisten cc_brightness :initial `{"available":false,"percent":0,"device":"—","message":"","error":"","busy":false,"external":{"available":false,"percent":0,"message":"Comprobando DDC/CI…"}}` `scripts/backend.py watch brightness`)
 (deflisten cc_bluetooth :initial `{"available":false,"enabled":false,"status":"","scanning":false,"devices":[],"error":"","busy":false}` `scripts/backend.py watch bluetooth`)
 (deflisten cc_calendar :initial `{"title":"Calendario","weeks":[],"selected":""}` `scripts/calendar_state.py watch`)
-(deflisten cc_airpods :initial `{"name":"AirPods","model":"AirPods","connected":false,"daemon":false,"left":"—","right":"—","case":"—","left_value":0,"right_value":0,"case_value":0,"ear":"No disponible","ear_available":false,"lid":"—","note":"","error":"","battery":"—","address":"","fresh":false}` `scripts/airpods.py --watch`)
+(deflisten cc_airpods :initial `{"name":"AirPods","model":"AirPods","connected":false,"daemon":false,"left":"—","right":"—","case":"—","left_value":0,"right_value":0,"case_value":0,"ear":"No disponible","ear_available":false,"lid":"—","note":"","error":"","battery":"—","address":"20:78:CD:23:16:0A","fresh":false}` `scripts/airpods.py --watch`)
 
 (deflisten cc_profiles :initial `{"available":false,"profiles":[],"active":"","degraded":"","error":"","busy":false,"percent":0,"battery_available":false,"battery_status":"Comprobando…","remaining":"Sin estimación"}` `scripts/backend.py watch profiles`)
 (deflisten cc_nightlight :initial `{"available":false,"running":false,"percent":0,"gamma":100,"temperature":6500,"warm":false,"error":"","busy":false}` `scripts/backend.py watch nightlight`)

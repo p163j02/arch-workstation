@@ -1,0 +1,50 @@
+{
+    "workbench.iconTheme": "material-icon-theme",
+    "explorer.confirmDragAndDrop": false,
+    "explorer.confirmDelete": false,
+    "workbench.sideBar.location": "right",
+    "terminal.integrated.enableMultiLinePasteWarning": false,
+    "editor.formatOnSave": true,
+    "editor.unicodeHighlight.invisibleCharacters": false,
+    "arduino.useArduinoCli": true,
+    "workbench.colorTheme": "Monokai Night",
+    "liveServer.settings.donotShowInfoMsg": true,
+    "liveServer.settings.donotVerifyTags": true,
+    "github.copilot.editor.enableAutoCompletions": true,
+    "[typescriptreact]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "[typescript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "database-client.autoSync": true,
+    "[javascript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    },
+    "github.copilot.enable": {
+        "*": false,
+        "plaintext": true,
+        "markdown": true,
+        "scminput": true
+    },
+    "git.confirmSync": false,
+    "git.ignoreRebaseWarning": true,
+    "mdb.mcp.server": "prompt",
+    "github.copilot.selectedCompletionModel": "",
+    "workbench.editorAssociations": {
+        "*.copilotmd": "vscode.markdown.preview.editor",
+        "*.xls": "default"
+    },
+    "github.copilot.nextEditSuggestions.enabled": true,
+    "git.autofetch": true,
+    "editor.inlineSuggest.experimental.showOnSuggestConflict": "always",
+    "editor.suggest.snippetsPreventQuickSuggestions": true,
+    "editor.quickSuggestions": {
+
+        "other": "on",
+        "comments": "on",
+        "strings": "on"
+    },
+    "latex-workshop.formatting.latex": "latexindent",
+    "chat.viewSessions.orientation": "stacked"
+}

@@ -34,6 +34,11 @@ Item {
     }
 
     function updateColors() {
+        if (config.autoColor !== "true") {
+            clock.smartHoursColor = config.primaryColor;
+            clock.smartMinutesColor = config.accentColor;
+            return;
+        }
         var base = clock.baseAccent;
 
         if (base.hsvSaturation < 0.15) {

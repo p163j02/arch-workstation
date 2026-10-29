@@ -1,8 +1,6 @@
 #!/bin/bash
 
-NOTEBOOK="$(hyprctl monitors all -j | jq -r '[.[] | select(.name | test("^(eDP|LVDS|DSI)-"))][0].name // empty')"
-[[ -n "$NOTEBOOK" ]] || exit 0
-LOCK="$XDG_RUNTIME_DIR/dotfiles-monitor-switch.lock"
+NOTEBOOK="eDP-1"
 
 get_externos() {
   # 'monitors all' incluye también los que están en mirror o disabled
@@ -18,7 +16,7 @@ for m in monitors:
 modo_extender() {
   local EXT=$1
   hyprctl keyword monitor "$EXT,preferred,0x0,1"
-  hyprctl keyword monitor "$NOTEBOOK,preferred,auto-right,1"
+  hyprctl keyword monitor "$NOTEBOOK,1920x1080@60,1920x0,1"
   sleep 0.3
 
   local batch=""
@@ -28,7 +26,7 @@ modo_extender() {
   for ws in 7 8 9 10 11 12; do
     batch+="dispatch moveworkspacetomonitor $ws $NOTEBOOK ; "
   done
-  batch+="dispatch focusmonitor $EXT ; dispatch workspace 1"
+  batch+="dispatch focusmonitor $EXT ; dispatch workspace 1 ; dispatch movecursor 960 540"
   hyprctl --batch "$batch"
   eww open sysmon-widget-ext 2>/dev/null
 }
@@ -36,11 +34,12 @@ modo_extender() {
 modo_espejo() {
   local EXT=$1
   hyprctl keyword monitor "$EXT,preferred,0x0,1,mirror,$NOTEBOOK"
-  hyprctl keyword monitor "$NOTEBOOK,preferred,0x0,1"
+  hyprctl keyword monitor "$NOTEBOOK,1920x1080@60,0x0,1"
   sleep 0.3
   hyprctl --batch "
         dispatch focusmonitor $NOTEBOOK ;
         dispatch workspace 1 ;
+        dispatch movecursor 960 540
     "
   eww close sysmon-widget-ext 2>/dev/null
 }
@@ -57,7 +56,7 @@ modo_solo_externo() {
   for ws in 1 2 3 4 5 6 7 8 9 10 11 12; do
     batch+="dispatch moveworkspacetomonitor $ws $EXT ; "
   done
-  batch+="dispatch focusmonitor $EXT ; dispatch workspace 1"
+  batch+="dispatch focusmonitor $EXT ; dispatch workspace 1 ; dispatch movecursor 960 540"
   hyprctl --batch "$batch"
   eww open sysmon-widget-ext 2>/dev/null
 }
@@ -66,7 +65,7 @@ modo_solo_notebook() {
   local EXT=$1
   # Habilitar notebook ANTES de deshabilitar el externo para evitar que
   # los workspaces queden en limbo durante la transición
-  hyprctl keyword monitor "$NOTEBOOK,preferred,0x0,1"
+  hyprctl keyword monitor "$NOTEBOOK,1920x1080@60,0x0,1"
   sleep 0.5
   hyprctl keyword monitor "$EXT,disabled"
   sleep 0.3
@@ -75,7 +74,7 @@ modo_solo_notebook() {
   for ws in 1 2 3 4 5 6 7 8 9 10 11 12; do
     batch+="dispatch moveworkspacetomonitor $ws $NOTEBOOK ; "
   done
-  batch+="dispatch focusmonitor $NOTEBOOK ; dispatch workspace 1"
+  batch+="dispatch focusmonitor $NOTEBOOK ; dispatch workspace 1 ; dispatch movecursor 960 540"
   hyprctl --batch "$batch"
   eww close sysmon-widget-ext 2>/dev/null
 }
@@ -120,19 +119,18 @@ opcion=$(printf "󰿏  Extender área de trabajo\n󰹑  Espejo (mirror)\n󰍺  S
 
 # Lock ANTES de ejecutar el modo, para que monitor-handler-dynamic ya lo vea
 # cuando modo_extender dispara el evento monitoradded (evita waybar duplicado)
-touch "$LOCK"
-trap 'rm -f -- "$LOCK"' EXIT
-log_lock() { echo "[$(date +%H:%M:%S)] monitor-switch: lock activo" >>"$XDG_RUNTIME_DIR/dotfiles-monitor-handler.log"; }
+touch /tmp/monitor-switch-running
+log_lock() { echo "[$(date +%H:%M:%S)] monitor-switch: lock activo" >>/tmp/monitor-handler.log; }
 log_lock
 
 case "$opcion" in
 *"Extender"*)
   modo_extender "$EXT"
-  reload_bars "$EXT $NOTEBOOK"
+  reload_bars "$EXT eDP-1"
   ;;
 *"Espejo"*)
   modo_espejo "$EXT"
-  reload_bars "$NOTEBOOK"
+  reload_bars "eDP-1"
   ;;
 *"Solo externo"*)
   modo_solo_externo "$EXT"
@@ -140,10 +138,10 @@ case "$opcion" in
   ;;
 *"Solo notebook"*)
   modo_solo_notebook "$EXT"
-  reload_bars "$NOTEBOOK"
+  reload_bars "eDP-1"
   ;;
 esac
 
 # Mantener el lock hasta que todo se estabilice (waybar tarda ~0.5–1s en arrancar)
 sleep 2
-rm -f -- "$LOCK"
+rm -f /tmp/monitor-switch-running

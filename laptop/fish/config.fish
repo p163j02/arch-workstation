@@ -1,11 +1,7 @@
 if status is-interactive
   # Commands to run in interactive sessions can go here
-  # El logo y el marco necesitan espacio; usar una vista compacta en ventanas divididas.
-  if test "$COLUMNS" -ge 100
-    fastfetch
-  else
-    fastfetch --logo none --structure title:os:uptime:shell:terminal:memory
-  end
+  alias npm="pnpm"
+  fastfetch
 
   # Reemplazar ls por eza con iconos y soporte Git
   alias ls="eza --icons --git"
@@ -34,13 +30,15 @@ end
 
 
 # Added by Antigravity CLI installer
-fish_add_path "$HOME/.local/bin"
+set -gx PATH "@HOME@/.local/bin" $PATH
 
 # bun
 set --export BUN_INSTALL "$HOME/.bun"
 set --export PATH $BUN_INSTALL/bin $PATH
 
 # pnpm
-set -gx PNPM_HOME "$HOME/.local/share/pnpm"
-fish_add_path "$PNPM_HOME"
+set -gx PNPM_HOME '@HOME@/.local/share/pnpm'
+if test "$PATH[1]" != "$PNPM_HOME/bin"
+  set -gx PATH "$PNPM_HOME/bin" $PATH
+end
 # pnpm end

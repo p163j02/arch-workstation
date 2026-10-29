@@ -9,7 +9,7 @@
   :initial `{"ram_used_gb":"0.0","ram_total_gb":"0.0","ram_pct":0,"status":"…","level":"normal"}`
   `python3 ~/.config/eww/scripts/resource-activity.py ram`)
 (deflisten temp_data
-  :initial `{"cpu":-1,"gpu":-1,"cpu_color":"#8df58a","gpu_color":"#8df58a","cpu_graph":"","gpu_graph":""}`
+  :initial `{"cpu":0,"gpu":0,"cpu_color":"#8df58a","gpu_color":"#8df58a","cpu_graph":"","gpu_graph":""}`
   `python3 ~/.config/eww/scripts/temp-history.py`)
 (deflisten disk_data
   :initial `{"used_gib":"0.00","total_gib":"0.00","pct":0,"fstype":"ext4","graph":"","read_rate":"—","write_rate":"—","device":"—","ceiling":"—","io_status":"Esperando primera muestra","status":"…","level":"normal"}`
@@ -83,7 +83,7 @@
     (box :orientation "h" :space-evenly false :spacing 8 :halign "center"
       (nerd-icon :name icon :size 24)
       (label :text label :class "temp-label"))
-    (label :text {value < 0 ? '—' : '${value}°C'} :class "temp-val"
+    (label :text "${value}°C" :class "temp-val"
       :style "color: ${value > 85 ? border_data.danger : value > 70 ? border_data.warning : border_data.soft};")
     (image :path {graph != '' ? graph : '@HOME@/.config/eww/desktop/sysmon/assets/temp-empty.svg'} :visible {graph != ''} :class "temp-graph" :image-width 112 :image-height 18)))
 

@@ -3,8 +3,6 @@ Description=airpods-tui headless IPC for native Eww / Waybar
 After=bluetooth.target
 PartOf=graphical-session.target
 
-ConditionFileIsExecutable=%h/.local/bin/airpods-tui
-
 [Service]
 ExecStart=%h/.local/bin/airpods-tui --daemon
 Restart=on-failure

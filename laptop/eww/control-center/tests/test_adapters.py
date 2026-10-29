@@ -15,13 +15,6 @@ import airpods
 import calendar_state
 
 class Adapters(unittest.TestCase):
-    def setUp(self):
-        cfg = backend.config()
-        cfg['airpods_address'] = 'AA:BB:CC:DD:EE:FF'
-        patcher = patch.object(backend, 'config', return_value=cfg)
-        patcher.start()
-        self.addCleanup(patcher.stop)
-
     def test_volume_level_without_sink_enumeration(self):
         with patch.object(backend, 'command', return_value='Volume: 0.42 [MUTED]') as command:
             self.assertEqual(backend.volume_level(), (42, True))

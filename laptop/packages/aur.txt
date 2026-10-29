@@ -5,7 +5,9 @@ bibata-cursor-theme
 chatgpt-desktop
 claude-desktop
 eww
+iwgtk
 localsend-bin
+pixie-sddm-git
 spotify
 tokyonight-gtk-theme-git
 visual-studio-code-bin

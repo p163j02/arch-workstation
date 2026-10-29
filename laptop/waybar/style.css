@@ -308,3 +308,53 @@ window#waybar .module {
   border-radius: 20px;
 }
 /* waybar-editor:end */
+/* wallpaper-studio:begin */
+/* wallpaper-studio:colors {"accent":"#4c79d4","secondary":"#cf4988","background":"#0b0a18","foreground":"#ecebf4"} */
+window#waybar#waybar#waybar { color: #ecebf4; }
+window#waybar#waybar#waybar .modules-left,
+window#waybar#waybar#waybar .modules-center,
+window#waybar#waybar#waybar .modules-right {
+    background-color: rgba(11, 10, 24, 0.82);
+    border-color: #4c79d4;
+    box-shadow: 0 0 6px rgba(76, 121, 212, 0.60), inset 0 0 4px rgba(76, 121, 212, 0.22);
+    color: #ecebf4;
+}
+/* All center launchers, including Wallpaper Studio and newly added apps. */
+window#waybar#waybar#waybar .modules-center .module,
+window#waybar#waybar#waybar .modules-center .module label,
+window#waybar#waybar#waybar .modules-right .module,
+window#waybar#waybar#waybar .modules-right .module label { color: #cf4988; }
+window#waybar#waybar#waybar .modules-center .module:hover,
+window#waybar#waybar#waybar .modules-center .module:hover label,
+window#waybar#waybar#waybar .modules-right .module:hover,
+window#waybar#waybar#waybar .modules-right .module:hover label { color: #4c79d4; }
+/* Workspace labels need their own rules when uniform editor colors exist. */
+window#waybar#waybar#waybar #workspaces button:not(.urgent),
+window#waybar#waybar#waybar #workspaces button:not(.urgent) label { color: #cf4988; }
+window#waybar#waybar#waybar #workspaces button:hover:not(.urgent) { background: #cf4988; color: #10131d; }
+window#waybar#waybar#waybar #workspaces button:hover:not(.urgent) label { color: #10131d; }
+window#waybar#waybar#waybar #workspaces button.active:not(.urgent) { background: #4c79d4; color: #10131d; }
+window#waybar#waybar#waybar #workspaces button.active:not(.urgent) label { color: #10131d; }
+window#waybar#waybar#waybar #taskbar button,
+window#waybar#waybar#waybar #taskbar button label { color: #cf4988; }
+window#waybar#waybar#waybar #taskbar button:hover { background: #cf4988; color: #10131d; }
+window#waybar#waybar#waybar #taskbar button:hover label { color: #10131d; }
+window#waybar#waybar#waybar #taskbar button.active { background: #4c79d4; color: #10131d; border-bottom-color: #cf4988; }
+window#waybar#waybar#waybar #taskbar button.active label { color: #10131d; }
+window#waybar#waybar#waybar #cpu,
+window#waybar#waybar#waybar #network,
+window#waybar#waybar#waybar #bluetooth,
+window#waybar#waybar#waybar #clock,
+window#waybar#waybar#waybar #custom-clock,
+window#waybar#waybar#waybar #custom-newws,
+window#waybar#waybar#waybar #custom-nightlight { color: #4c79d4; }
+window#waybar#waybar#waybar #memory,
+window#waybar#waybar#waybar #pulseaudio:not(.muted),
+window#waybar#waybar#waybar #backlight,
+window#waybar#waybar#waybar #custom-media,
+window#waybar#waybar#waybar #power-profiles-daemon:not(.performance),
+window#waybar#waybar#waybar #battery:not(.warning):not(.critical) { color: #cf4988; }
+window#waybar#waybar#waybar #battery.warning:not(.charging) { color: #e0af68; }
+window#waybar#waybar#waybar #battery.critical:not(.charging) { color: #f7768e; }
+window#waybar#waybar#waybar #custom-power:hover { color: #4c79d4; }
+/* wallpaper-studio:end */

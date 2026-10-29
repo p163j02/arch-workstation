@@ -1,9 +1,7 @@
 #!/bin/bash
 
-NOTEBOOK="$(hyprctl monitors all -j | jq -r '[.[] | select(.name | test("^(eDP|LVDS|DSI)-"))][0].name // empty')"
-[[ -n "$NOTEBOOK" ]] || exit 0
-LOCK="$XDG_RUNTIME_DIR/dotfiles-monitor-switch.lock"
-LOG="$XDG_RUNTIME_DIR/dotfiles-monitor-handler.log"
+NOTEBOOK="eDP-1"
+LOG="/tmp/monitor-handler.log"
 
 log() { echo "[$(date +%H:%M:%S)] $*" >>"$LOG"; }
 
@@ -52,7 +50,7 @@ modo_extender() {
   log "modo: extender ($EXT)"
 
   hyprctl keyword monitor "$EXT,preferred,0x0,1"
-  hyprctl keyword monitor "$NOTEBOOK,preferred,auto-right,1"
+  hyprctl keyword monitor "$NOTEBOOK,1920x1080@60,1920x0,1"
   sleep 0.3
 
   local batch=""
@@ -62,7 +60,7 @@ modo_extender() {
   for ws in 7 8 9 10 11 12; do
     batch+="dispatch moveworkspacetomonitor $ws $NOTEBOOK ; "
   done
-  batch+="dispatch focusmonitor $EXT ; dispatch workspace 1"
+  batch+="dispatch focusmonitor $EXT ; dispatch workspace 1 ; dispatch movecursor 960 540"
 
   hyprctl --batch "$batch"
   eww open sysmon-widget-ext 2>/dev/null
@@ -73,13 +71,14 @@ modo_espejo() {
   log "modo: espejo ($EXT)"
 
   hyprctl keyword monitor "$EXT,preferred,0x0,1,mirror,$NOTEBOOK"
-  hyprctl keyword monitor "$NOTEBOOK,preferred,0x0,1"
+  hyprctl keyword monitor "$NOTEBOOK,1920x1080@60,0x0,1"
   sleep 0.3
 
   # En espejo el foco se queda en el notebook
   hyprctl --batch "
         dispatch focusmonitor $NOTEBOOK ;
         dispatch workspace 1 ;
+        dispatch movecursor 960 540
     "
   eww close sysmon-widget-ext 2>/dev/null
 }
@@ -99,7 +98,7 @@ modo_solo_externo() {
   for ws in 1 2 3 4 5 6 7 8 9 10 11 12; do
     batch+="dispatch moveworkspacetomonitor $ws $EXT ; "
   done
-  batch+="dispatch focusmonitor $EXT ; dispatch workspace 1"
+  batch+="dispatch focusmonitor $EXT ; dispatch workspace 1 ; dispatch movecursor 960 540"
 
   hyprctl --batch "$batch"
   eww open sysmon-widget-ext 2>/dev/null
@@ -110,7 +109,7 @@ modo_solo_notebook() {
   log "modo: solo notebook (deshabilitando $EXT)"
 
   # Habilitar notebook ANTES de deshabilitar el externo
-  hyprctl keyword monitor "$NOTEBOOK,preferred,0x0,1"
+  hyprctl keyword monitor "$NOTEBOOK,1920x1080@60,0x0,1"
   sleep 0.5
   hyprctl keyword monitor "$EXT,disabled"
   sleep 0.3
@@ -119,7 +118,7 @@ modo_solo_notebook() {
   for ws in 1 2 3 4 5 6 7 8 9 10 11 12; do
     batch+="dispatch moveworkspacetomonitor $ws $NOTEBOOK ; "
   done
-  batch+="dispatch focusmonitor $NOTEBOOK ; dispatch workspace 1"
+  batch+="dispatch focusmonitor $NOTEBOOK ; dispatch workspace 1 ; dispatch movecursor 960 540"
 
   hyprctl --batch "$batch"
   eww close sysmon-widget-ext 2>/dev/null
@@ -137,7 +136,7 @@ elegir_modo() {
 
   # Doble verificación: si monitor-switch.sh ya se encargó mientras el menú
   # estaba abierto (o antes de que llegáramos aquí), no relanzar waybar
-  if [ -f "$LOCK" ]; then
+  if [ -f /tmp/monitor-switch-running ]; then
     log "elegir_modo: lock activo al ejecutar modo, omitiendo waybar"
     return
   fi
@@ -176,7 +175,7 @@ monitor_conectado() {
 
   # Si monitor-switch.sh está gestionando el cambio, él ya muestra el menú
   # y gestiona waybar — no hacer nada aquí para evitar duplicados
-  if [ -f "$LOCK" ]; then
+  if [ -f /tmp/monitor-switch-running ]; then
     log "switch manual en curso — omitiendo menú y waybar para $EXT"
     return
   fi
@@ -200,19 +199,19 @@ monitor_desconectado() {
   fi
 
   # Solo queda el notebook
-  hyprctl keyword monitor "$NOTEBOOK,preferred,0x0,1"
+  hyprctl keyword monitor "$NOTEBOOK,1920x1080@60,0x0,1"
   sleep 0.3
 
   local batch=""
   for ws in 1 2 3 4 5 6 7 8 9 10 11 12; do
     batch+="dispatch moveworkspacetomonitor $ws $NOTEBOOK ; "
   done
-  batch+="dispatch focusmonitor $NOTEBOOK ; dispatch workspace 1"
+  batch+="dispatch focusmonitor $NOTEBOOK ; dispatch workspace 1 ; dispatch movecursor 960 540"
 
   hyprctl --batch "$batch"
   log "batch ejecutado, cursorpos: $(hyprctl cursorpos)"
 
-  if [ -f "$LOCK" ]; then
+  if [ -f /tmp/monitor-switch-running ]; then
     log "switch manual en curso — omitiendo reload waybar"
   else
     reload_bars "$NOTEBOOK"
@@ -227,7 +226,7 @@ monitor_desconectado() {
 externos_al_inicio=$(get_externos)
 if [ -z "$externos_al_inicio" ]; then
   log "inicio: solo notebook"
-  hyprctl keyword monitor "$NOTEBOOK,preferred,0x0,1"
+  hyprctl keyword monitor "$NOTEBOOK,1920x1080@60,0x0,1"
   reload_bars "$NOTEBOOK"
 else
   log "inicio: externos detectados → $externos_al_inicio (extendiendo sin menú)"

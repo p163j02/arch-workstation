@@ -1,8 +1,10 @@
 # Arch Workstation — desktop y notebook
 
-Instalación personal de Hyprland, Waybar, Eww, Fish, Kitty, editores y aplicaciones. Revisada el **28 de octubre de 2026** contra los repositorios oficiales de Arch y AUR. Ambos perfiles usan el mismo instalador y mantienen copias independientes de sus configuraciones, aplicaciones, paquetes y recursos.
+Instalación personal de Hyprland, Waybar, Eww, Fish, Kitty, editores y aplicaciones. Revisada el **28 de octubre de 2026** contra los repositorios oficiales de Arch y AUR. Cada equipo mantiene sus configuraciones, aplicaciones, paquetes y recursos. El notebook tiene además instalador, exportador y validaciones autónomos dentro de `laptop/`.
 
 Esto configura un **Arch Linux ya instalado**. El particionado, cifrado, arranque, usuario y acceso a Internet deben funcionar antes. No modifica particiones ni el bootloader.
+
+Para reproducir el notebook actual, consulta [la guía autónoma de laptop](laptop/README.md). Sus entradas principales son `bash laptop/install.sh` y `bash laptop/update.sh`.
 
 ## Instalar en un equipo nuevo
 

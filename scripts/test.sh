@@ -6,6 +6,7 @@ trap 'rm -rf -- "$test_runtime"' EXIT
 export XDG_RUNTIME_DIR="$test_runtime" PYTHONDONTWRITEBYTECODE=1
 python3 scripts/check.py
 python3 -m unittest discover -s tests -v
+python3 -m unittest discover -s laptop/tests -v
 for profile in desktop laptop; do
     cc -O2 -Wall -Wextra -Werror -fsyntax-only "$profile/eww/control-center/scripts/fast-client.c"
     python3 -m unittest discover -s "$profile/eww/control-center/tests" -v

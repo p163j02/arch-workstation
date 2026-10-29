@@ -1,7 +1,7 @@
 configuration {
     modi: "drun,window,run";
     show-icons: true;
-    icon-theme: "Papirus-Dark";
+    icon-theme: "Tokyonight-Moon";
     drun-display-format: "{name}";
     window-format: "{w} · {c} · {t}";
     // Conservar el workspace desde el que se selecciona la aplicación.

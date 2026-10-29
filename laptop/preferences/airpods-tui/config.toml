@@ -1,0 +1,5 @@
+# Avoid automatic connection stealing and continuous proximity discovery.
+# Native panels use only capabilities reported by the device.
+ble_scan = false
+auto_connect = false
+volume_osd_command = []

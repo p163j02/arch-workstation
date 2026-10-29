@@ -1,0 +1,36 @@
+{
+  "current": "@HOME@/wallpapers/20458297.gif",
+  "palettes": {
+    "@HOME@/wallpapers/20458297.gif": {
+      "accent": "#4c79d4",
+      "secondary": "#cf4988",
+      "background": "#0b0a18",
+      "foreground": "#ecebf4"
+    },
+    "@HOME@/wallpapers/bttf.png": {
+      "accent": "#e15a2c",
+      "secondary": "#eb9274",
+      "background": "#261a12",
+      "foreground": "#f4efeb"
+    },
+    "@HOME@/wallpapers/paisaje.jpg": {
+      "accent": "#cc6a67",
+      "secondary": "#827cb1",
+      "background": "#1e1419",
+      "foreground": "#f4ebf0"
+    },
+    "@HOME@/wallpapers/galaxy.png": {
+      "accent": "#c2713b",
+      "secondary": "#a55dcc",
+      "background": "#120c17",
+      "foreground": "#f0ebf4"
+    }
+  },
+  "folders": [
+    "@HOME@/wallpapers"
+  ],
+  "transition": {
+    "effect": "fade",
+    "duration": 2.0
+  }
+}

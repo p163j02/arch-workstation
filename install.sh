@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 trap 'echo "Error en la línea $LINENO. La instalación no terminó." >&2' ERR
+if [[ ${1:-} == laptop ]]; then
+    shift
+    exec bash "$(dirname -- "${BASH_SOURCE[0]}")/laptop/install.sh" "$@"
+fi
 source "$(dirname -- "${BASH_SOURCE[0]}")/scripts/common.sh"
 require_profile "${1:-}"
 MODE="${2:---install}"

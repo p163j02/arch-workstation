@@ -4,12 +4,11 @@
   (cc-section :text "Brillo · sincronizar pantallas")
   (box :space-evenly false :spacing 12
    (label :class "cc-row-icon" :text "󰃟")
-   (scale :hexpand true :min {cc_brightness.minimum} :max 100 :value {cc_brightness.percent} :active {cc_brightness.available} :timeout "12s" :onchange "scripts/backend.py action brightness set {}")
+   (scale :hexpand true :min 5 :max 100 :value {cc_brightness.percent} :active {cc_brightness.available} :timeout "12s" :onchange "scripts/backend.py action brightness set {}")
    (label :width 44 :text "${cc_brightness.percent}%"))
-  (label :class "cc-secondary" :visible {cc_brightness.internal.available} :text "Portátil: ${cc_brightness.internal.percent}%" :xalign 0)
-  (label :class "cc-secondary" :text {cc_brightness.external.available ? "Monitor: ${cc_brightness.external.percent}% · DDC/CI" : "Monitor: no disponible"} :xalign 0)
-  (cc-error :text {cc_brightness.available ? "" : cc_brightness.message})
-  (button :class "cc-preset" :timeout "18s" :onclick "scripts/backend.py action brightness refresh" "Volver a detectar pantallas")
+  (label :class "cc-secondary" :text "Notebook: ${cc_brightness.percent}%" :xalign 0)
+  (label :class "cc-secondary" :text {cc_brightness.external.available ? "Monitor: ${cc_brightness.external.percent}% · DDC/CI" : "Monitor: DDC/CI pendiente"} :xalign 0)
+  (cc-error :text {cc_brightness.external.available ? "" : cc_brightness.external.message})
   (box :class "cc-footer" :space-evenly false :spacing 12
    (label :text "Luz nocturna" :hexpand true :xalign 0)
    (button :class {cc_nightlight.warm ? "cc-toggle on" : "cc-toggle"} :active {cc_nightlight.available} :timeout "8s" :onclick "scripts/backend.py action nightlight warm" {cc_nightlight.warm ? "󰨚" : "󰨙"}))

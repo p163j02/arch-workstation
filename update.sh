@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
+if [[ ${1:-} == laptop ]]; then
+    shift
+    exec bash "$(dirname -- "${BASH_SOURCE[0]}")/laptop/update.sh" "$@"
+fi
 source "$(dirname -- "${BASH_SOURCE[0]}")/scripts/common.sh"
 require_profile "${1:-}"
 [[ $# -eq 1 ]] || { echo "Uso: $0 laptop|desktop" >&2; exit 2; }

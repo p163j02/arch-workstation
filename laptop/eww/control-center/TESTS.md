@@ -1,1 +1,1 @@
-Ejecuta `bash scripts/test.sh` desde la raíz. Las pruebas usan datos ficticios y no modifican dispositivos.
+docs/TESTS.md

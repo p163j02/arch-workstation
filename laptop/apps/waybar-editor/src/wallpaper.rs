@@ -1,3 +1,4 @@
+mod login;
 mod palette;
 mod theme;
 
@@ -11,7 +12,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::rc::Rc;
-use std::time::{Duration, SystemTime};
+use std::time::SystemTime;
 use theme::{
     Palette, Paths, Transition, apply_wallpaper, extract_palette, palette_for, save_palette,
 };
@@ -43,10 +44,17 @@ pub fn run() {
 
 fn cli(args: &[String]) -> Result<()> {
     let paths = Paths::discover();
+    if args == ["--sync-login"] {
+        if let Some(image) = paths.read_state()?.current {
+            let image = PathBuf::from(image);
+            return login::sync(&paths, &image, &palette_for(&paths, &image)?);
+        }
+        return Ok(());
+    }
     let image = match args {
         [flag] if flag == "--help" || flag == "-h" => {
             println!(
-                "Wallpaper Studio\n\nUso: wallpaper-studio\n     wallpaper-studio --apply RUTA\n     wallpaper-studio --restore\n\nFondos estáticos y GIF animados, paletas por imagen y transiciones.\nAplica a todos los monitores. Usa awww-daemon y Hyprland."
+                "Wallpaper Studio\n\nUso: wallpaper-studio\n     wallpaper-studio --apply RUTA\n     wallpaper-studio --restore\n     wallpaper-studio --sync-login\n\nFondos estáticos y GIF animados, paletas por imagen y transiciones.\nAplica a todos los monitores. Usa awww-daemon y Hyprland."
             );
             return Ok(());
         }
@@ -81,12 +89,11 @@ struct WallpaperLibrary {
 }
 
 impl WallpaperLibrary {
-    fn connect_activation(&self, list: &gtk::ListBox, on_select: impl Fn(PathBuf) + 'static) {
+    fn connect_selection(&self, list: &gtk::ListBox, on_select: impl Fn(PathBuf) + 'static) {
         let files = self.files.clone();
         list.set_activate_on_single_click(true);
-        // ListBoxRow::activate is a keybinding action; pointer activation is
-        // delivered by the parent ListBox::row-activated signal.
-        list.connect_row_activated(move |_, row| {
+        list.connect_row_selected(move |_, row| {
+            let Some(row) = row else { return };
             let path = usize::try_from(row.index())
                 .ok()
                 .and_then(|index| files.borrow().get(index).cloned());
@@ -108,7 +115,7 @@ struct View {
     colors: Vec<gtk::ColorDialogButton>,
     selected: Rc<RefCell<Option<PathBuf>>>,
     generation: Rc<Cell<u64>>,
-    timer: Rc<RefCell<Option<glib::SourceId>>>,
+    timer: Rc<RefCell<Option<gtk::TickCallbackId>>>,
     paths: Paths,
 }
 
@@ -225,12 +232,8 @@ impl View {
             .set_paintable(Some(&gdk::Texture::for_pixbuf(&iter.pixbuf())));
         let animated = !animation.is_static_image();
         if animated {
-            let weak_picture = self.picture.downgrade();
-            let timer = glib::timeout_add_local(Duration::from_millis(16), move || {
-                let Some(picture) = weak_picture.upgrade() else {
-                    return glib::ControlFlow::Break;
-                };
-                if picture.is_mapped() && iter.advance(SystemTime::now()) {
+            let timer = self.picture.add_tick_callback(move |picture, _| {
+                if iter.advance(SystemTime::now()) {
                     picture.set_paintable(Some(&gdk::Texture::for_pixbuf(&iter.pixbuf())));
                 }
                 glib::ControlFlow::Continue
@@ -421,7 +424,7 @@ fn build(app: &adw::Application) {
     });
     let library = WallpaperLibrary::default();
     let selection_view = Rc::downgrade(&view);
-    library.connect_activation(&list, move |path| {
+    library.connect_selection(&list, move |path| {
         if let Some(view) = selection_view.upgrade() {
             view.select(path);
         }
@@ -693,9 +696,6 @@ fn load_library(view: &View, list: &gtk::ListBox, roots: Vec<PathBuf>, library: 
             if selected {
                 matched = true;
                 list.select_row(Some(&row));
-                if !had_selection {
-                    list.emit_by_name::<()>("row-activated", &[&row]);
-                }
             }
         }
         if had_selection && !matched {
@@ -748,10 +748,97 @@ fn collect_images(root: &Path, out: &mut Vec<PathBuf>, depth: usize) {
 #[cfg(test)]
 mod selection_tests {
     use super::*;
+    use std::time::Duration;
+
+    #[test]
+    #[ignore = "requires a GTK display"]
+    fn gif_preview_changes_frames_before_applying() {
+        gtk::init().expect("GTK display required for the GIF preview regression test");
+        let view = Rc::new(View {
+            picture: gtk::Picture::new(),
+            name: gtk::Label::new(None),
+            status: gtk::Label::new(None),
+            apply: gtk::Button::new(),
+            save: gtk::Button::new(),
+            reset: gtk::Button::new(),
+            colors: Vec::new(),
+            selected: Rc::default(),
+            generation: Rc::default(),
+            timer: Rc::default(),
+            paths: Paths::discover(),
+        });
+        let frames = Rc::new(RefCell::new(Vec::new()));
+        let received = frames.clone();
+        view.picture.connect_paintable_notify(move |picture| {
+            let texture = picture
+                .paintable()
+                .unwrap()
+                .downcast::<gdk::Texture>()
+                .unwrap();
+            let stride = texture.width() as usize * 4;
+            let mut pixels = vec![0; stride * texture.height() as usize];
+            texture.download(&mut pixels, stride);
+            let mut frames = received.borrow_mut();
+            if frames.len() < 2 && frames.first().is_none_or(|first| first != &pixels) {
+                frames.push(pixels);
+            }
+        });
+        let list = gtk::ListBox::new();
+        let row = gtk::ListBoxRow::new();
+        list.append(&row);
+        let library = WallpaperLibrary::default();
+        library.files.borrow_mut().push(PathBuf::from(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/fixtures/preview.gif"
+        )));
+        let selected_view = view.clone();
+        library.connect_selection(&list, move |path| selected_view.select(path));
+        let body = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+        body.append(&list);
+        body.append(&view.picture);
+        let window = gtk::Window::builder().child(&body).build();
+        window.present();
+        list.select_row(Some(&row));
+        let context = glib::MainContext::default();
+        let paintable = gtk::WidgetPaintable::new(Some(&view.picture));
+        let mut rendered = Vec::new();
+        let start = std::time::Instant::now();
+        while start.elapsed() < Duration::from_secs(10) {
+            context.iteration(false);
+            if view.picture.paintable().is_some() {
+                let snapshot = gtk::Snapshot::new();
+                paintable.snapshot(&snapshot, 64.0, 36.0);
+                if let Some(node) = snapshot.to_node() {
+                    let texture = window.renderer().unwrap().render_texture(&node, None);
+                    let stride = texture.width() as usize * 4;
+                    let mut pixels = vec![0; stride * texture.height() as usize];
+                    texture.download(&mut pixels, stride);
+                    if rendered.len() < 2 && rendered.first().is_none_or(|first| first != &pixels) {
+                        rendered.push(pixels);
+                    }
+                }
+            }
+            if frames.borrow().len() == 2 && rendered.len() == 2 {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        view.stop_animation();
+        window.destroy();
+        let frames = frames.borrow();
+        assert_eq!(
+            frames.len(),
+            2,
+            "GIF preview stayed on its first frame: {}",
+            view.status.text()
+        );
+        assert!(view.timer.borrow().is_none());
+        assert_eq!(rendered.len(), 2, "GIF preview did not repaint");
+    }
 
     #[test]
     #[ignore = "requires a GTK display; can run with the Broadway backend"]
-    fn thumbnail_activation_uses_parent_signal_and_preserves_paths_after_filter_and_refresh() {
+    fn selection_preserves_paths_after_filter_and_refresh() {
         gtk::init().expect("GTK display required for the thumbnail activation regression test");
         let list = gtk::ListBox::new();
         let library = WallpaperLibrary::default();
@@ -761,17 +848,15 @@ mod selection_tests {
         ];
         let selections = Rc::new(RefCell::new(Vec::new()));
         let received = selections.clone();
-        library.connect_activation(&list, move |path| received.borrow_mut().push(path));
+        library.connect_selection(&list, move |path| received.borrow_mut().push(path));
         assert!(list.activates_on_single_click());
         let first = gtk::ListBoxRow::new();
         let second = gtk::ListBoxRow::new();
         list.append(&first);
         list.append(&second);
-        // This is the signal GTK emits for a mouse activation, unlike the
-        // row's keybinding action that originally left clicks unhandled.
-        list.emit_by_name::<()>("row-activated", &[&first]);
+        list.select_row(Some(&first));
         list.set_filter_func(|row| row.index() == 1);
-        list.emit_by_name::<()>("row-activated", &[&second]);
+        list.select_row(Some(&second));
         assert_eq!(
             *selections.borrow(),
             [
@@ -785,8 +870,7 @@ mod selection_tests {
         list.unset_filter_func();
         let replacement = gtk::ListBoxRow::new();
         list.append(&replacement);
-        // Keyboard activation also reaches the parent's row-activated signal.
-        replacement.emit_by_name::<()>("activate", &[]);
+        list.select_row(Some(&replacement));
         assert_eq!(
             selections.borrow().last(),
             Some(&PathBuf::from("/images/new.gif"))

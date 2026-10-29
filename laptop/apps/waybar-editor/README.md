@@ -1,4 +1,6 @@
-# Waybar Editor
+# Waybar Editor del notebook
+
+Esta copia y sus comandos pertenecen a `laptop/`. Las modificaciones del notebook se mantienen en esta carpeta.
 
 Editor gráfico local en **Rust + GTK4 + libadwaita**, en español. No necesita navegador, servidor ni privilegios de administrador.
 
@@ -16,7 +18,7 @@ El mismo instalador incluye **Wallpaper Studio**, un gestor de fondos en Rust/GT
 wallpaper-studio
 ```
 
-Selecciona un fondo para extraer su paleta. La extracción agrupa los tonos de una muestra de hasta 128 × 128 píxeles, da más peso a las zonas saturadas y elige un secundario separado del acento cuando la imagen contiene otro tono. Ajusta luminosidad conservando tono y saturación, en lugar de mezclar todos los colores oscuros con blanco. Fondo y texto reciben un tinte de la imagen; los fondos monocromáticos conservan colores de su propia familia. Las imágenes parecidas pueden producir paletas parecidas. Puedes editar **Acento**, **Secundario**, **Fondo** y **Texto** con el selector nativo. **Guardar paleta** conserva los colores de ese fondo sin cambiar el escritorio; **Extraer de nuevo** recalcula colores de la imagen con el algoritmo actual en el borrador. Las paletas ya guardadas se respetan al actualizar: usa este botón y luego Guarda o Aplica para renovarlas. **Aplicar fondo y paleta** guarda la paleta, el último fondo y la transición, y actualiza todos los monitores. Admite fundido, barrido, onda, círculos, transición aleatoria y cambio instantáneo; la duración es de 0,1 a 10 segundos. Las miniaturas, la extracción de colores y la aplicación mediante `awww` se procesan en segundo plano. La vista previa de GIF se decodifica a tamaño reducido en GTK.
+Selecciona un fondo para extraer su paleta. La extracción agrupa los tonos de una muestra de hasta 128 × 128 píxeles, da más peso a las zonas saturadas y elige un secundario separado del acento cuando la imagen contiene otro tono. Ajusta luminosidad conservando tono y saturación, en lugar de mezclar todos los colores oscuros con blanco. Fondo y texto reciben un tinte de la imagen; los fondos monocromáticos conservan colores de su propia familia. Las imágenes parecidas pueden producir paletas parecidas. Puedes editar **Acento**, **Secundario**, **Fondo** y **Texto** con el selector nativo. **Guardar paleta** conserva los colores de ese fondo sin cambiar el escritorio; **Extraer de nuevo** recalcula colores de la imagen con el algoritmo actual en el borrador. Las paletas ya guardadas se respetan al actualizar: usa este botón y luego Guarda o Aplica para renovarlas. **Aplicar fondo y paleta** guarda la paleta, el último fondo y la transición, y actualiza todos los monitores. Admite fundido, barrido, onda, círculos, transición aleatoria y cambio instantáneo; la duración es de 0,1 a 10 segundos. Las miniaturas, la extracción de colores y la aplicación mediante `awww` se procesan en segundo plano. Al seleccionar un GIF con el ratón o el teclado, la vista previa grande reproduce la animación antes de aplicar el fondo. Se decodifica a tamaño reducido y sigue el reloj de dibujo de GTK.
 
 Cada paleta se conserva por ruta absoluta en `$XDG_STATE_HOME/wallpaper-studio/state.json` (o `~/.local/state/...`), con compatibilidad con el estado anterior. Aplica colores a Waybar, el monitor de recursos Eww y los bordes activos/inactivos de Hyprland. Los bordes se guardan en un bloque de `hypr/local.conf`, que la configuración de este repositorio carga al final, para conservarlos tras recargar Hyprland. Eww comparte la paleta entre el widget y sus gráficos, incluso si solo cambia el texto o el fondo. Los desplegables de audio, brillo, Bluetooth, calendario, energía, AirPods y apagado importan `eww/control-center/wallpaper-studio.scss`, generado por el gestor. Al aplicar se recarga esa instancia de Eww; el panel Wi-Fi nativo observa el mismo archivo y actualiza su CSS en vivo.
 
@@ -72,11 +74,11 @@ Cada archivo se reemplaza mediante un temporal sincronizado. Si falla la escritu
 Requiere Rust ≥ 1.89/Cargo, pkgconf, GTK4 ≥ 4.10 y libadwaita ≥ 1.5. La vista fiel requiere además Python3, PyGObject, Cairo y GTK3 con sus typelibs. El generador GTK3 es un helper interno incluido en el binario: devuelve una imagen PNG en memoria y se mantiene separado de GTK4, sin navegador ni servidor. Si falta, el editor conserva el fallback esquemático. El instalador completo de Arch Workstation prepara estas dependencias para laptop y desktop.
 
 ```sh
-cd ~/arch-workstation
-bash laptop/apps/waybar-editor/install.sh
+cd ~/arch-workstation/laptop
+bash apps/waybar-editor/install.sh
 ```
 
-Instala `~/.local/bin/waybar-editor`, `~/.local/bin/wallpaper-studio` y entradas de aplicaciones en `$XDG_DATA_HOME/applications/`. El código fuente queda en `laptop/apps/waybar-editor` dentro del repositorio. Compila con `--locked`; requiere acceso a crates.io si las dependencias no están en caché.
+Instala `~/.local/bin/waybar-editor`, `~/.local/bin/wallpaper-studio` y entradas de aplicaciones en `$XDG_DATA_HOME/applications/`. El código fuente queda en `apps/waybar-editor` dentro del repositorio. Compila con `--locked`; requiere acceso a crates.io si las dependencias no están en caché.
 
 Para validar sin abrir la interfaz:
 
@@ -88,10 +90,11 @@ waybar-editor --config /ruta/config.jsonc --style /ruta/style.css --data /ruta/d
 Pruebas y análisis:
 
 ```sh
-cargo test --locked --manifest-path laptop/apps/waybar-editor/Cargo.toml
-cargo clippy --locked --manifest-path laptop/apps/waybar-editor/Cargo.toml --all-targets -- -D warnings
-# Regresión de clic/teclado en miniaturas; requiere una sesión gráfica disponible:
-cargo test --locked --manifest-path laptop/apps/waybar-editor/Cargo.toml thumbnail_activation_uses_parent_signal -- --ignored --test-threads=1
+cargo test --locked --manifest-path apps/waybar-editor/Cargo.toml
+cargo clippy --locked --manifest-path apps/waybar-editor/Cargo.toml --all-targets -- -D warnings
+# Regresiones de selección y vista previa animada; requieren una sesión gráfica disponible:
+cargo test --locked --manifest-path apps/waybar-editor/Cargo.toml selection_preserves_paths -- --ignored --test-threads=1
+cargo test --locked --manifest-path apps/waybar-editor/Cargo.toml gif_preview_changes_frames_before_applying -- --ignored --test-threads=1
 ```
 
 ## Desinstalar

@@ -6,7 +6,6 @@ from pathlib import Path
 import subprocess
 import tempfile
 import time
-import sys
 from monitor_theme import chart_colors
 
 
@@ -24,21 +23,16 @@ def chart(values, color):
 
 def main():
     history = {'cpu': [], 'gpu': []}
-    script = Path(__file__).with_name('temps.py')
+    script = Path(__file__).with_name('temps.sh')
     # Private runtime directory; no persistent writes and no shared filenames.
     with tempfile.TemporaryDirectory(prefix='eww-temp-', dir=os.environ.get('XDG_RUNTIME_DIR')) as runtime:
         frame = 0
         while True:
             try:
-                data = json.loads(subprocess.check_output([sys.executable, str(script)], timeout=4))
+                data = json.loads(subprocess.check_output(['bash', str(script)], timeout=4))
                 for sensor in history:
                     value = data[sensor]
                     tokens = chart_colors()
-                    if value < 0:
-                        history[sensor] = []
-                        data[f'{sensor}_color'] = tokens['muted']
-                        data[f'{sensor}_graph'] = ''
-                        continue
                     color = tokens['danger'] if value > 85 else tokens['warning'] if value > 70 else tokens['soft']
                     data[f'{sensor}_color'] = color
                     history[sensor] = (history[sensor] + [value])[-24:]
@@ -48,6 +42,7 @@ def main():
                 print(json.dumps(data), flush=True)
                 frame += 1
             except (subprocess.SubprocessError, ValueError, KeyError, OSError) as error:
+                import sys
                 print(f'temp-history: {error}', file=sys.stderr)
             time.sleep(5)
 

@@ -8,7 +8,5 @@
   "airpods_hide_disconnected": false,
   "airpods_stale_seconds": 180,
   "popup_width": 380,
-  "airpods_width": 420,
-  "external_connector": "",
-  "ddc_bus": ""
+  "airpods_width": 420
 }
