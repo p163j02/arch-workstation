@@ -2,7 +2,7 @@
 
 Gestor de fondos en **Rust + GTK4 + libadwaita** para Hyprland, incluido en el perfil autónomo del **notebook**. Ofrece imágenes estáticas y GIF animados, vista previa, búsqueda, paletas editables por fondo y transiciones con `awww`.
 
-La paleta se aplica a los escritorios y lanzadores de Waybar, los bordes de Hyprland, el monitor de recursos Eww y los paneles del centro de control. Los fondos y las paletas personales se guardan en el equipo; no se copian del desktop a la laptop.
+La paleta se aplica a los escritorios y lanzadores de Waybar, los bordes de Hyprland, el monitor de recursos Eww, los paneles del centro de control y la terminal Kitty. Los fondos y las paletas personales se guardan en el equipo; no se copian del desktop a la laptop.
 
 **Nueva extensión para la aplicación existente:** sincronización con SDDM/Pixie y Hyprlock. Para añadirla a esta copia del notebook, sigue [la guía SDDM y Hyprlock](README-SDDM-HYPRLOCK.md), con comandos de actualización, cambios y respaldos.
 
@@ -71,7 +71,7 @@ La [documentación del paquete compartido](../waybar-editor/README.md) detalla l
 
 ## Llevar funcionalidades al desktop
 
-Wallpaper Studio ya existe en ambos perfiles. Esta guía describe la copia del notebook en la revisión `a42e5a8`; revisa las diferencias de tu checkout antes de incorporar cambios posteriores. Los archivos de destino deben quedar en `desktop/`, manteniendo ambos perfiles independientes.
+Wallpaper Studio ya existe en ambos perfiles. Esta guía describe las funciones de la copia actual del notebook; revisa las diferencias de tu checkout antes de incorporar cambios. Los archivos de destino deben quedar en `desktop/`, manteniendo ambos perfiles independientes.
 
 | Funcionalidad | Código del notebook | Configuración que necesita en desktop |
 | --- | --- | --- |
@@ -79,6 +79,7 @@ Wallpaper Studio ya existe en ambos perfiles. Esta guía describe la copia del n
 | Movimiento en la vista previa grande, antes de aplicar | `../waybar-editor/src/wallpaper.rs` | Cambio de selección a `row-selected`, reloj GTK y fixture `tests/fixtures/preview.gif`. |
 | Colores de Waybar y bordes de Hyprland | `../waybar-editor/src/wallpaper/theme.rs` | Bloques administrados en `~/.config/waybar/style.css` y `~/.config/hypr/local.conf`; el Lua de Hyprland debe leer este último. |
 | Monitor de recursos y paneles de brillo, audio, Wi-Fi y demás | `theme.rs`, `../../eww/control-center/wallpaper-studio.scss`, scripts de Wi-Fi y sysmon | Importación del SCSS del centro de control y lectores de paleta de los widgets. Esa integración base ya está en desktop; conserva sus widgets y dispositivos. |
+| Colores de la terminal Kitty | `../waybar-editor/src/wallpaper/theme.rs` | Bloque administrado en `~/.config/kitty/kitty.conf` y recarga con `SIGUSR1`. |
 | Fondo y colores de SDDM/Pixie y Hyprlock | `../waybar-editor/src/wallpaper/login.rs`, llamadas en `wallpaper.rs` y `theme.rs`, `setup-login-theme.sh`, `sddm_theme.py` | Pixie instalado y seleccionado, plantilla de Hyprlock con variables y directorio público por usuario. |
 
 Para incorporar la versión completa de Wallpaper Studio del notebook, los archivos de código que difieren actualmente son `wallpaper.rs`, `wallpaper/theme.rs` y el nuevo `wallpaper/login.rs`; añade también el fixture de GIF para poder ejecutar sus pruebas. No hace falta copiar todo Waybar Editor ni sus configuraciones de escritorio.
@@ -88,3 +89,16 @@ Si solo quieres la animación de GIF, adapta los cambios de selección, `TickCal
 Para **paleta y fondo de SDDM/Hyprlock**, sigue [el procedimiento de traslado al desktop](README-SDDM-HYPRLOCK.md#incorporar-esta-funcionalidad-al-desktop). Incluye las rutas exactas, la plantilla de bloqueo, compilación, activación, comprobaciones y recuperación.
 
 Mantén las imágenes, carpetas, paletas y monitores del desktop. No copies `laptop/state/`, `laptop/waybar/` ni todo `laptop/hypr/` para habilitar una función. Ambos perfiles usan el estado del usuario que ejecuta la app, no una carpeta de estado compartida dentro del repositorio.
+
+
+## Paleta de la terminal Kitty
+
+**Aplicar fondo y paleta**, `--apply` y `--restore` también actualizan Kitty cuando existe `~/.config/kitty/kitty.conf` (o su equivalente bajo `XDG_CONFIG_HOME`). **Guardar paleta** solo guarda el borrador; `--sync-login` sigue limitado a SDDM/Hyprlock.
+
+La app administra un bloque `# wallpaper-studio:begin` / `# wallpaper-studio:end` al final de `kitty.conf`: fondo, texto, cursor, selección, pestañas, bordes y colores ANSI neutros/azules/magentas/cian. Rojo, verde y amarillo mantienen colores reconocibles para errores, éxito y avisos; el gris de comentarios se calcula entre fondo y texto. Las fuentes, transparencia, atajos y demás ajustes quedan fuera del bloque y se conservan.
+
+La configuración se guarda para nuevas ventanas y se solicita la recarga de las abiertas mediante `SIGUSR1`, según la [documentación de Kitty](https://sw.kovidgoyal.net/kitty/conf/). No necesita habilitar control remoto. Si Kitty no está abierto, el cambio queda preparado; si falta su configuración, no se crea una nueva. Un fallo al aplicar el fondo restaura el archivo anterior. Si falla únicamente la recarga, se muestra una advertencia y los colores quedan guardados.
+
+Para incorporar esta función al desktop, adapta `Paths.kitty`, `themed_kitty` y la preparación, escritura, reversión y recarga de `apply_with` en `../waybar-editor/src/wallpaper/theme.rs`. Añade el campo `kitty` a los fixtures que construyen `Paths`, incluido el de `wallpaper/login.rs`, y traslada las pruebas de tema/recarga/reversión. Si ya incorporaste la integración SDDM, no necesitas volver a preparar Pixie. Recompila e instala desde `desktop/apps/`, conservando su propio `kitty.conf`; el bloque se genera al aplicar su paleta.
+
+Para recuperar los colores anteriores, retira solo el bloque administrado y recarga Kitty. Las aplicaciones que definen su propio tema con colores RGB, como algunos editores, pueden conservar esos colores propios.

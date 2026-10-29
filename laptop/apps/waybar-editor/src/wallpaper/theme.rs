@@ -78,6 +78,7 @@ pub(super) struct Paths {
     pub style: PathBuf,
     pub hypr: PathBuf,
     pub control_style: PathBuf,
+    pub kitty: PathBuf,
 }
 impl Paths {
     pub fn discover() -> Self {
@@ -96,6 +97,7 @@ impl Paths {
             style: config.join("waybar/style.css"),
             hypr: config.join("hypr/local.conf"),
             control_style: config.join("eww/control-center/wallpaper-studio.scss"),
+            kitty: config.join("kitty/kitty.conf"),
         }
     }
     pub fn read_state(&self) -> Result<StateFile> {
@@ -209,6 +211,11 @@ fn apply_with(
     let css = themed_css(std::str::from_utf8(&old_style)?, palette)?;
     let old_hypr = read_optional(&paths.hypr)?;
     let old_control = read_optional(&paths.control_style)?;
+    let old_kitty = read_optional(&paths.kitty)?;
+    let kitty = old_kitty
+        .as_deref()
+        .map(|original| themed_kitty(std::str::from_utf8(original)?, palette))
+        .transpose()?;
     let control_css = control_center_css(palette)?;
     let hypr = replace_block(
         std::str::from_utf8(old_hypr.as_deref().unwrap_or_default())?,
@@ -226,6 +233,7 @@ fn apply_with(
         &paths.hypr,
         &paths.state,
         &paths.control_style,
+        &paths.kitty,
     ] {
         if fs::symlink_metadata(path).is_ok_and(|m| m.file_type().is_symlink()) {
             bail!("No se reemplazan enlaces simbólicos: {}", path.display());
@@ -235,6 +243,9 @@ fn apply_with(
     let result = (|| -> Result<()> {
         write_atomic(&paths.hypr, hypr.as_bytes())?;
         write_atomic(&paths.control_style, control_css.as_bytes())?;
+        if let Some(config) = &kitty {
+            write_atomic(&paths.kitty, config.as_bytes())?;
+        }
         command(
             "awww",
             &[
@@ -254,10 +265,14 @@ fn apply_with(
         let css_rollback = write_atomic(&paths.style, &old_style);
         let hypr_rollback = restore_optional(&paths.hypr, old_hypr.as_deref());
         let control_rollback = restore_optional(&paths.control_style, old_control.as_deref());
+        let kitty_rollback = restore_optional(&paths.kitty, old_kitty.as_deref());
         css_rollback.context(format!("{error:#}; además no se pudo restaurar el CSS"))?;
         hypr_rollback.context(format!("{error:#}; además no se pudo restaurar local.conf"))?;
         control_rollback.context(format!(
             "{error:#}; además no se pudo restaurar el tema de Eww"
+        ))?;
+        kitty_rollback.context(format!(
+            "{error:#}; además no se pudo restaurar el tema de Kitty"
         ))?;
         return Err(error);
     }
@@ -286,6 +301,13 @@ fn apply_with(
             "No se pudo solicitar la recarga de Waybar: {error:#}"
         ));
     }
+    if kitty.is_some()
+        && let Err(error) = command("pkill", &["-SIGUSR1", "-x", "kitty"])
+    {
+        warnings.push(format!(
+            "Paleta guardada; no se pudo solicitar la recarga de Kitty: {error:#}"
+        ));
+    }
     if paths.control_style.with_file_name("eww.yuck").is_file() {
         let config = paths.control_style.parent().unwrap().to_string_lossy();
         if let Err(error) = command("eww", &["--config", &config, "reload"]) {
@@ -302,6 +324,35 @@ fn apply_with(
         ));
     }
     Ok(warnings)
+}
+
+fn themed_kitty(original: &str, palette: &Palette) -> Result<String> {
+    palette.validate()?;
+    let midpoint = |offset| -> Result<u16> {
+        Ok(
+            (u16::from_str_radix(&palette.background[offset..offset + 2], 16)?
+                + u16::from_str_radix(&palette.foreground[offset..offset + 2], 16)?)
+                / 2,
+        )
+    };
+    let muted = format!(
+        "#{:02x}{:02x}{:02x}",
+        midpoint(1)?,
+        midpoint(3)?,
+        midpoint(5)?
+    );
+    replace_block(
+        original,
+        "# wallpaper-studio:begin",
+        "# wallpaper-studio:end",
+        &format!(
+            "foreground {fg}\nbackground {bg}\ncursor {accent}\ncursor_text_color {bg}\nselection_foreground {bg}\nselection_background {accent}\nactive_tab_background {accent}\nactive_tab_foreground {bg}\ninactive_tab_background {bg}\ninactive_tab_foreground {fg}\ntab_bar_background {bg}\nactive_border_color {accent}\ninactive_border_color {bg}\ncolor0 {bg}\ncolor8 {muted}\ncolor7 {fg}\ncolor15 {fg}\ncolor4 {accent}\ncolor12 {accent}\ncolor5 {secondary}\ncolor13 {secondary}\ncolor6 {secondary}\ncolor14 {accent}\ncolor1 #e06c75\ncolor9 #e88a93\ncolor2 #4d9a7a\ncolor10 #6ab394\ncolor3 #c9a84c\ncolor11 #d4b86a",
+            fg = palette.foreground,
+            bg = palette.background,
+            accent = palette.accent,
+            secondary = palette.secondary,
+        ),
+    )
 }
 
 fn read_optional(path: &Path) -> Result<Option<Vec<u8>>> {
@@ -573,6 +624,7 @@ mod tests {
             style: dir.path().join("waybar/style.css"),
             hypr: dir.path().join("hypr/local.conf"),
             control_style: dir.path().join("eww/control-center/wallpaper-studio.scss"),
+            kitty: dir.path().join("kitty/kitty.conf"),
         };
         fs::create_dir_all(paths.style.parent().unwrap()).unwrap();
         fs::write(
@@ -702,6 +754,7 @@ mod tests {
         })
         .unwrap();
         assert!(warnings.is_empty());
+        assert!(!paths.kitty.exists());
         let calls = calls.borrow();
         assert_eq!(
             calls.iter().map(|c| c.0.as_str()).collect::<Vec<_>>(),
@@ -722,6 +775,68 @@ mod tests {
     }
 
     #[test]
+    fn kitty_palette_preserves_settings_and_replaces_only_the_managed_block() {
+        let (_dir, _paths, _image, palette) = fixture();
+        let original = "font_size 10.5\nbackground_opacity 0.82\nmap ctrl+c copy_to_clipboard\n";
+        let first = themed_kitty(original, &palette).unwrap();
+        let mut changed = palette.clone();
+        changed.accent = "#ffcc00".into();
+        let updated = themed_kitty(&first, &changed).unwrap();
+        assert!(updated.starts_with(original));
+        assert_eq!(updated.matches("# wallpaper-studio:begin").count(), 1);
+        assert!(updated.contains("cursor #ffcc00\n"));
+        assert!(!updated.contains("#65d9ff"));
+        assert!(updated.contains("background #10131d\n"));
+        assert!(updated.contains("foreground #f2f4ff\n"));
+        assert!(updated.contains("color8 #81838e\n"));
+        assert!(updated.contains("color1 #e06c75\n"));
+        assert!(updated.contains("color2 #4d9a7a\n"));
+        assert!(updated.contains("color4 #ffcc00\n"));
+        assert!(updated.contains("color5 #bb9af7\n"));
+        assert!(themed_kitty("# wallpaper-studio:begin\n", &palette).is_err());
+    }
+
+    #[test]
+    fn kitty_is_reloaded_after_apply_and_reload_failure_is_reported() {
+        for reload_fails in [false, true] {
+            let (_dir, paths, image, palette) = fixture();
+            fs::create_dir_all(paths.kitty.parent().unwrap()).unwrap();
+            fs::write(&paths.kitty, "font_size 10.5\n").unwrap();
+            let reloaded = std::cell::Cell::new(false);
+            let warnings = apply_with(
+                &paths,
+                &image,
+                &palette,
+                &Transition::default(),
+                |program, args| {
+                    if program == "pkill" && args == ["-SIGUSR1", "-x", "kitty"] {
+                        assert!(
+                            fs::read_to_string(&paths.kitty)
+                                .unwrap()
+                                .contains("cursor #65d9ff")
+                        );
+                        reloaded.set(true);
+                        if reload_fails {
+                            bail!("reload failed");
+                        }
+                    }
+                    Ok(())
+                },
+            )
+            .unwrap();
+            assert!(reloaded.get());
+            assert_eq!(warnings.len(), usize::from(reload_fails));
+            if reload_fails {
+                assert!(warnings[0].contains("recarga de Kitty"));
+            }
+            assert_eq!(
+                paths.read_state().unwrap().current.as_deref(),
+                image.to_str()
+            );
+        }
+    }
+
+    #[test]
     fn failed_backend_restores_config_and_does_not_claim_success() {
         for existing_hypr in [false, true] {
             let (_dir, paths, image, palette) = fixture();
@@ -730,6 +845,8 @@ mod tests {
                 fs::write(&paths.hypr, "# original hypr\n").unwrap();
                 fs::create_dir_all(paths.control_style.parent().unwrap()).unwrap();
                 fs::write(&paths.control_style, "/* original panel theme */\n").unwrap();
+                fs::create_dir_all(paths.kitty.parent().unwrap()).unwrap();
+                fs::write(&paths.kitty, "# original kitty\n").unwrap();
             }
             let original = fs::read(&paths.style).unwrap();
             let result = apply_with(
@@ -746,7 +863,12 @@ mod tests {
             assert_eq!(fs::read(&paths.style).unwrap(), original);
             assert_eq!(paths.hypr.exists(), existing_hypr);
             assert_eq!(paths.control_style.exists(), existing_hypr);
+            assert_eq!(paths.kitty.exists(), existing_hypr);
             if existing_hypr {
+                assert_eq!(
+                    fs::read_to_string(&paths.kitty).unwrap(),
+                    "# original kitty\n"
+                );
                 assert_eq!(
                     fs::read_to_string(&paths.control_style).unwrap(),
                     "/* original panel theme */\n"

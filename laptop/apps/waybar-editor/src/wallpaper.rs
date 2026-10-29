@@ -563,9 +563,9 @@ fn build(app: &adw::Application) {
             body.set_sensitive(true);
             header.set_sensitive(true);
             match result {
-                Ok(Ok(warnings)) if warnings.is_empty() => view
-                    .status
-                    .set_text("Fondo y paleta aplicados a Waybar, Eww y los bordes de Hyprland."),
+                Ok(Ok(warnings)) if warnings.is_empty() => {
+                    view.status.set_text("Fondo y paleta aplicados al entorno.")
+                }
                 Ok(Ok(warnings)) => view.status.set_text(&warnings.join("\n")),
                 Ok(Err(error)) => view
                     .status
