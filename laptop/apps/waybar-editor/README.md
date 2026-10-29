@@ -100,3 +100,28 @@ cargo test --locked --manifest-path apps/waybar-editor/Cargo.toml gif_preview_ch
 ## Desinstalar
 
 Elimina `~/.local/bin/wallpaper-studio`, `~/.local/bin/waybar-editor` y `$XDG_DATA_HOME/applications/waybar-editor.desktop` (por defecto `~/.local/share/applications/waybar-editor.desktop`). Elimina también `wallpaper-studio.desktop` del mismo directorio. Los bloques de colores aplicados permanecen en `waybar/style.css` y `hypr/local.conf`; puedes quitar únicamente los bloques delimitados por `wallpaper-studio:begin` y `wallpaper-studio:end` para recuperar los colores anteriores. Presets y respaldos quedan en el directorio de datos hasta que decidas borrarlos.
+
+
+## Llevar funcionalidades al desktop
+
+El editor permite reordenar módulos, añadir lanzadores, cambiar fuentes, colores y geometría de Waybar, guardar presets y revisar una vista previa. Su código de editor coincide con la copia de desktop en la revisión `a42e5a8`; las diferencias de implementación del notebook están en Wallpaper Studio, dentro del mismo paquete Rust.
+
+| Funcionalidad | Archivos que la implementan | Integración en desktop |
+| --- | --- | --- |
+| Edición de Waybar y presets | `src/main.rs`, `src/model.rs` y demás módulos del editor | Ya disponible en `desktop/apps/waybar-editor/`; compila su copia. |
+| Lanzador de Wallpaper Studio | `install.sh` y selección de aplicación en `src/main.rs` | El instalador crea ambos accesos; ambos usan el mismo ejecutable. |
+| Vista previa grande de GIF al seleccionar | `src/wallpaper.rs` y `tests/fixtures/preview.gif` | Traslada el cambio de selección y reloj de dibujo con su prueba. |
+| Paleta de SDDM y Hyprlock | `src/wallpaper.rs`, `src/wallpaper/theme.rs`, `src/wallpaper/login.rs` | Requiere también scripts de preparación y configuración del tema/bloqueo. |
+
+La [guía de Wallpaper Studio](../wallpaper-studio/README.md#llevar-funcionalidades-al-desktop) detalla los archivos y la adaptación. Cambiar solo `login.rs` no basta: hacen falta la declaración del módulo, la opción `--sync-login` y la llamada desde la aplicación de paletas.
+
+Para instalar únicamente el editor que ya pertenece al desktop, ejecuta desde la raíz del repositorio:
+
+```bash
+bash desktop/apps/waybar-editor/install.sh
+waybar-editor --check
+```
+
+Esto instala los dos binarios/accesos y utiliza las configuraciones activas de ese equipo. No aplica la configuración de barra del notebook. Ambos instaladores escriben en `~/.local/bin/waybar-editor`: si instalas luego la otra copia en el mismo usuario, sustituirá el ejecutable y también cambiará la versión de Wallpaper Studio.
+
+Al trasladar cambios, conserva los archivos de Waybar, presets y ajustes locales del desktop. Compila y prueba desde `desktop/apps/waybar-editor/`, sin enlazar su código a `laptop/`. Las dependencias y comandos de Cargo son los indicados arriba, cambiando el directorio de trabajo al perfil desktop.

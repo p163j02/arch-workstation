@@ -67,3 +67,24 @@ Comparte el binario con Waybar Editor: el instalador coloca `~/.local/bin/waybar
 Requiere Rust ≥ 1.89, GTK4 ≥ 4.10 y libadwaita ≥ 1.5. Aplicar fondos requiere `awww-daemon` activo. Esta versión usa la misma imagen en todos los monitores y admite GIF, pero no reproducción de vídeo.
 
 La [documentación del paquete compartido](../waybar-editor/README.md) detalla los archivos de estado, los bloques de colores y la recuperación ante errores.
+
+
+## Llevar funcionalidades al desktop
+
+Wallpaper Studio ya existe en ambos perfiles. Esta guía describe la copia del notebook en la revisión `a42e5a8`; revisa las diferencias de tu checkout antes de incorporar cambios posteriores. Los archivos de destino deben quedar en `desktop/`, manteniendo ambos perfiles independientes.
+
+| Funcionalidad | Código del notebook | Configuración que necesita en desktop |
+| --- | --- | --- |
+| Fondos estáticos/GIF, carpetas, paletas y transiciones | `../waybar-editor/src/wallpaper.rs`, `src/wallpaper/palette.rs`, `src/wallpaper/theme.rs` | `awww-daemon` y el estado propio del usuario; esta base ya existe en desktop. |
+| Movimiento en la vista previa grande, antes de aplicar | `../waybar-editor/src/wallpaper.rs` | Cambio de selección a `row-selected`, reloj GTK y fixture `tests/fixtures/preview.gif`. |
+| Colores de Waybar y bordes de Hyprland | `../waybar-editor/src/wallpaper/theme.rs` | Bloques administrados en `~/.config/waybar/style.css` y `~/.config/hypr/local.conf`; el Lua de Hyprland debe leer este último. |
+| Monitor de recursos y paneles de brillo, audio, Wi-Fi y demás | `theme.rs`, `../../eww/control-center/wallpaper-studio.scss`, scripts de Wi-Fi y sysmon | Importación del SCSS del centro de control y lectores de paleta de los widgets. Esa integración base ya está en desktop; conserva sus widgets y dispositivos. |
+| Fondo y colores de SDDM/Pixie y Hyprlock | `../waybar-editor/src/wallpaper/login.rs`, llamadas en `wallpaper.rs` y `theme.rs`, `setup-login-theme.sh`, `sddm_theme.py` | Pixie instalado y seleccionado, plantilla de Hyprlock con variables y directorio público por usuario. |
+
+Para incorporar la versión completa de Wallpaper Studio del notebook, los archivos de código que difieren actualmente son `wallpaper.rs`, `wallpaper/theme.rs` y el nuevo `wallpaper/login.rs`; añade también el fixture de GIF para poder ejecutar sus pruebas. No hace falta copiar todo Waybar Editor ni sus configuraciones de escritorio.
+
+Si solo quieres la animación de GIF, adapta los cambios de selección, `TickCallbackId`, cancelación del callback y prueba de animación de `wallpaper.rs`; ese archivo también contiene los cambios de inicio/bloqueo, por lo que copiarlo entero exige incorporar `login.rs` y su integración en `theme.rs`.
+
+Para **paleta y fondo de SDDM/Hyprlock**, sigue [el procedimiento de traslado al desktop](README-SDDM-HYPRLOCK.md#incorporar-esta-funcionalidad-al-desktop). Incluye las rutas exactas, la plantilla de bloqueo, compilación, activación, comprobaciones y recuperación.
+
+Mantén las imágenes, carpetas, paletas y monitores del desktop. No copies `laptop/state/`, `laptop/waybar/` ni todo `laptop/hypr/` para habilitar una función. Ambos perfiles usan el estado del usuario que ejecuta la app, no una carpeta de estado compartida dentro del repositorio.

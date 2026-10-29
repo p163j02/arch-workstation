@@ -55,6 +55,8 @@ Las credenciales, claves de emparejamiento, perfiles de navegador, historiales, 
 
 ## Wallpaper Studio del notebook
 
+Para incorporar funciones puntuales en el desktop, consulta el [índice de apps y sus guías de traslado](apps/README.md).
+
 Esta copia incluye la vista previa grande animada de GIF, la paleta del monitor de recursos y los paneles de Waybar, y la sincronización con SDDM y Hyprlock. Las modificaciones de esta copia se realizan en `laptop/apps/`.
 
 Al aplicar un fondo, SDDM y Hyprlock reciben un PNG estático y sus colores. Para revisar la configuración de inicio ya guardada:
