@@ -20,6 +20,8 @@ El instalador completo instala las dependencias, compila la aplicación desde c�
 
 ## Actualizar una laptop que ya usa Arch Workstation
 
+Cierra las ventanas de Wallpaper Studio y Waybar Editor antes de actualizar. El instalador sustituye el ejecutable de forma atómica; una ventana que siga abierta conserva su código anterior y puede volver a escribir el tema antiguo. Abre la app nuevamente después de instalarla.
+
 ```sh
 cd ~/arch-workstation/laptop
 git pull --ff-only

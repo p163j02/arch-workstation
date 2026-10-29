@@ -30,3 +30,4 @@ chmod 644 "$wallpaper_entry"
 if command -v desktop-file-validate >/dev/null 2>&1; then desktop-file-validate "$entry"; desktop-file-validate "$wallpaper_entry"; fi
 if command -v update-desktop-database >/dev/null 2>&1; then update-desktop-database "$(dirname "$entry")"; fi
 printf 'Instalado: %s\nInstalado: %s\nLanzadores: %s, %s\n' "$binary" "$wallpaper_binary" "$entry" "$wallpaper_entry"
+printf '%s\n' 'Cierra y vuelve a abrir Waybar Editor y Wallpaper Studio si estaban abiertos: las ventanas existentes conservan la versión anterior.'

@@ -71,6 +71,8 @@ Cada archivo se reemplaza mediante un temporal sincronizado. Si falla la escritu
 
 ## Compilar e instalar
 
+Cierra Waybar Editor y Wallpaper Studio antes de actualizar y vuelve a abrirlos después. Ambos usan el mismo ejecutable; las ventanas abiertas conservan la versión cargada antes de la instalación.
+
 Requiere Rust ≥ 1.89/Cargo, pkgconf, GTK4 ≥ 4.10 y libadwaita ≥ 1.5. La vista fiel requiere además Python3, PyGObject, Cairo y GTK3 con sus typelibs. El generador GTK3 es un helper interno incluido en el binario: devuelve una imagen PNG en memoria y se mantiene separado de GTK4, sin navegador ni servidor. Si falta, el editor conserva el fallback esquemático. El instalador completo de Arch Workstation prepara estas dependencias para laptop y desktop.
 
 ```sh
