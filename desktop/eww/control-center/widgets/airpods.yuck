@@ -4,9 +4,9 @@
   (label :text title :class "cc-secondary")
   (progress :value value :visible {text != "—"})
   (label :text text :wrap true :class "cc-green")))
-(defwidget cc-airpods-widget []
+(defwidget cc-airpods-widget [generation]
  (box :orientation "v" :space-evenly false :spacing 16
-  (cc-header :icon "󱡏" :title "AirPods")
+  (cc-header :generation generation :icon "󱡏" :title "AirPods")
   (box :space-evenly false :spacing 16
    (label :text "󱡏" :class "cc-airpods-image")
    (box :orientation "v" :space-evenly false :spacing 6 :hexpand true

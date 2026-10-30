@@ -208,7 +208,8 @@ def find_ap_path(bus, device_path, bssid):
 
 
 class WifiPanel:
-    def __init__(self, x, y, width, maxheight, screen, monitor):
+    def __init__(self, x, y, width, maxheight, screen, monitor, generation=""):
+        self.generation = generation
         self.x, self.y = x, y
         self.width = width
         self.maxheight = maxheight
@@ -239,6 +240,7 @@ class WifiPanel:
         self.window.set_resizable(False)
         self.window.connect('delete-event', self.on_close)
         self.window.connect('key-press-event', self.on_key)
+        self.window.connect('map-event', self.on_mapped)
 
         GtkLayerShell.init_for_window(self.window)
         GtkLayerShell.set_namespace(self.window, 'waybar-control-center')
@@ -329,6 +331,7 @@ class WifiPanel:
         gear_btn.connect('clicked', self.open_editor)
         close_btn = Gtk.Button(label='󰅖')
         close_btn.get_style_context().add_class('cc-close')
+        close_btn.set_tooltip_text('Cerrar · Escape')
         close_btn.connect('clicked', lambda *_: self.request_popup_close())
         header.pack_start(icon, False, False, 0)
         header.pack_start(title, True, True, 0)
@@ -518,21 +521,30 @@ class WifiPanel:
             return True
         return False
 
+    def on_mapped(self, *_):
+        if self.generation:
+            (backend.RUN / 'wifi-panel.ready').write_text(self.generation)
+        return False
+
     def on_close(self, *_):
-        self.close()
+        self.request_popup_close()
         return True
 
     def request_popup_close(self):
-        python = sys.executable if Path(sys.executable).name.startswith('python') else '/usr/bin/python3'
+        # Hide immediately, even if IPC/Hyprland is unavailable or NM is busy.
+        self.close()
         try:
-            subprocess.Popen([python, str(POPUP_MANAGER), 'close'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True)
-        except Exception:
-            self.close()
+            args = ['dismiss', self.generation] if self.generation else ['close']
+            subprocess.Popen([str(POPUP_MANAGER), *args], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True)
+        except OSError:
+            pass
 
     def close(self):
         if not self.running:
             return
         self.running = False
+        self.window.hide()
+        self.window.destroy()
         self.executor.shutdown(wait=False, cancel_futures=True)
         Gtk.main_quit()
 
@@ -913,17 +925,28 @@ def write_pid_file():
 
 
 def clear_pid_file():
-    PID_FILE.unlink(missing_ok=True)
+    # An old worker may finish after its replacement has already registered.
+    try:
+        if PID_FILE.read_text().strip() == str(os.getpid()):
+            PID_FILE.unlink(missing_ok=True)
+    except FileNotFoundError:
+        pass
 
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
-    x, y, width, maxheight, screen, monitor = parse_args(argv)
-    write_pid_file()
-    signal.signal(signal.SIGTERM, lambda *_: Gtk.main_quit())
-    signal.signal(signal.SIGINT, lambda *_: Gtk.main_quit())
+    generation = argv[6] if len(argv) == 7 else ''
+    x, y, width, maxheight, screen, monitor = parse_args(argv[:6])
+    if not generation:
+        write_pid_file()
+    def stop(*_):
+        if panel is not None:
+            panel.close()
+    panel = None
+    signal.signal(signal.SIGTERM, stop)
+    signal.signal(signal.SIGINT, stop)
     try:
-        panel = WifiPanel(x, y, width, maxheight, screen, monitor)
+        panel = WifiPanel(x, y, width, maxheight, screen, monitor, generation)
         Gtk.main()
         panel.close()
     finally:

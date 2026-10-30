@@ -22,6 +22,13 @@ adaptador CFFI observa el estado y anima únicamente el ancho del viewport,
 sincronizado con el reloj de fotogramas de GTK. Las letras, los iconos y los
 botones conservan su tamaño; no se anima la tipografía ni sus márgenes.
 El módulo nativo conserva todos sus botones originales y su ordenación.
+Con Hyprland 0.57, el adaptador también traduce los clics a
+`hyprctl eval 'hl.dispatch(hl.dsp.focus({ workspace = "N" }))'`, porque
+Waybar 0.15 todavía envía `dispatch workspace N`, retirado por Hyprland.
+El destino se lee del primer elemento del formato `{icon} {windows}`:
+los números indican su workspace y α–ζ indican 7–12. Si se personalizan
+estos iconos o el formato, se debe actualizar también esta correspondencia
+en `workspace_id_from_label`.
 No se recarga el CSS ni se reinicia la barra al alternar.
 El botón recibe sus cambios por un flujo continuo, sin sondeo cada segundo.
 El estado manual se conserva si se reinicia la barra o el servicio en la misma sesión de Hyprland.

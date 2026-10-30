@@ -1,6 +1,6 @@
-(defwidget cc-profiles-widget []
+(defwidget cc-profiles-widget [generation]
  (box :orientation "v" :space-evenly false :spacing 14
-  (cc-header :icon "󰁹" :title "Batería y energía")
+  (cc-header :generation generation :icon "󰁹" :title "Batería y energía")
   (box :space-evenly false :spacing 12
    (label :class "cc-battery-pill" :text {cc_profiles.battery_available ? "${cc_profiles.percent}%" : "—"})
    (box :orientation "v" :space-evenly false :spacing 5 :hexpand true

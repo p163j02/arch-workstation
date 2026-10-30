@@ -4,6 +4,8 @@ Gestor de fondos en **Rust + GTK4 + libadwaita** para Hyprland del perfil **desk
 
 La paleta se aplica a los escritorios y lanzadores de Waybar, los bordes de Hyprland, el monitor de recursos Eww, los paneles del centro de control y la terminal Kitty. También sincroniza el fondo y los colores de SDDM/Pixie y Hyprlock después de preparar la integración. Los fondos y las paletas personales se guardan en el equipo; no se copian del desktop a la laptop.
 
+Los bordes activos mantienen un gradiente de acento a secundario a 45°. En Hyprland 0.57 se actualizan en vivo mediante `hyprctl eval` y `hl.config`; el bloque de `hypr/local.conf` conserva la paleta al recargar la configuración.
+
 ## Instalación en un equipo nuevo
 
 Desde la copia actualizada de este repositorio, ejecuta como tu usuario:
@@ -27,6 +29,10 @@ bash install.sh desktop --config-only
 El último comando actualiza **las configuraciones del perfil desktop**, conservando los ajustes locales y creando el respaldo descrito en el README principal. Revisa cualquier personalización antes de ejecutar ese paso. Inicia una sesión nueva de Hyprland para cargar las integraciones actualizadas.
 
 Si solo necesitas reinstalar los binarios y lanzadores sobre una configuración ya actualizada, basta con `bash desktop/apps/wallpaper-studio/install.sh`; ese comando no modifica la configuración activa de Waybar ni Eww.
+
+## Configuración integrada
+
+También está integrado en [Configuración del PC](../pc-settings/README.md), junto a Waybar Editor, pantallas y ajustes de transparencia/widgets. Abre `pc-settings`; el acceso independiente `wallpaper-studio` sigue disponible. Cambiar de fondo conserva las transparencias configuradas desde la nueva app.
 
 ## Abrir y usar
 

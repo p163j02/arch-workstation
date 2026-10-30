@@ -2,6 +2,10 @@
 
 Editor gráfico local en **Rust + GTK4 + libadwaita**, en español. No necesita navegador, servidor ni privilegios de administrador.
 
+## Configuración integrada
+
+El perfil desktop incluye [Configuración del PC](../pc-settings/README.md): abre `pc-settings` para usar Wallpaper Studio y Waybar Editor dentro de una misma ventana, administrar pantallas y ajustar la transparencia y el contenido de los widgets. Los accesos independientes siguen disponibles.
+
 ## Abrir
 
 Una vez instalado, busca **Waybar Editor** en Rofi o ejecuta:
@@ -76,7 +80,7 @@ cd ~/arch-workstation
 bash desktop/apps/waybar-editor/install.sh
 ```
 
-Instala `~/.local/bin/waybar-editor`, `~/.local/bin/wallpaper-studio` y entradas de aplicaciones en `$XDG_DATA_HOME/applications/`. El código fuente queda en `desktop/apps/waybar-editor` dentro del repositorio. Compila con `--locked`; requiere acceso a crates.io si las dependencias no están en caché.
+Instala `~/.local/bin/waybar-editor`, `~/.local/bin/wallpaper-studio`, `~/.local/bin/pc-settings` y entradas de aplicaciones en `$XDG_DATA_HOME/applications/`. El código fuente queda en `desktop/apps/waybar-editor` dentro del repositorio. Compila con `--locked`; requiere acceso a crates.io si las dependencias no están en caché.
 
 Para validar sin abrir la interfaz:
 
@@ -96,4 +100,4 @@ cargo test --locked --manifest-path desktop/apps/waybar-editor/Cargo.toml thumbn
 
 ## Desinstalar
 
-Elimina `~/.local/bin/wallpaper-studio`, `~/.local/bin/waybar-editor` y `$XDG_DATA_HOME/applications/waybar-editor.desktop` (por defecto `~/.local/share/applications/waybar-editor.desktop`). Elimina también `wallpaper-studio.desktop` del mismo directorio. Los bloques de colores aplicados permanecen en `waybar/style.css` y `hypr/local.conf`; puedes quitar únicamente los bloques delimitados por `wallpaper-studio:begin` y `wallpaper-studio:end` para recuperar los colores anteriores. Presets y respaldos quedan en el directorio de datos hasta que decidas borrarlos.
+Elimina `~/.local/bin/wallpaper-studio`, `~/.local/bin/waybar-editor` y `$XDG_DATA_HOME/applications/waybar-editor.desktop` (por defecto `~/.local/share/applications/waybar-editor.desktop`). Elimina también `wallpaper-studio.desktop`, `pc-settings.desktop` y el enlace `~/.local/bin/pc-settings`. Los bloques de colores aplicados permanecen en `waybar/style.css` y `hypr/local.conf`; puedes quitar únicamente los bloques delimitados por `wallpaper-studio:begin` y `wallpaper-studio:end` para recuperar los colores anteriores. Presets y respaldos quedan en el directorio de datos hasta que decidas borrarlos.

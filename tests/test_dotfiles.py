@@ -114,6 +114,20 @@ assert(monitor.output == "DP-1" and monitor.mode == "preferred" and monitor.scal
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertIn('config ok', result.stdout)
 
+    def test_desktop_monitor_bridge_preserves_transform_and_mirror(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / 'monitors.conf'
+            path.write_text('monitor = DP-3, 1920x1080@100, 0x0, 1, transform, 1, mirror, HDMI-A-1\n')
+            script = f'''
+local monitor
+hl = {{ monitor = function(value) monitor = value end }}
+local settings = dofile({json.dumps(str(ROOT / 'desktop/hypr/local-settings.lua'))})
+settings.read({json.dumps(str(path))})
+assert(monitor.output == 'DP-3' and monitor.transform == 1)
+assert(monitor.mirror == 'HDMI-A-1' and monitor.mode == '1920x1080@100')
+'''
+            subprocess.run(['lua', '-'], input=script, text=True, check=True, capture_output=True)
+
     def test_missing_aur_package_fails(self):
         with patch.object(check.subprocess, 'check_output', return_value='\n'.join(
             check.package_names(ROOT) + ['amd-ucode', 'intel-ucode', 'nvidia-open-dkms',
@@ -190,6 +204,12 @@ class InstallTests(unittest.TestCase):
         wallpaper_entry = self.home / '.local/share/applications/wallpaper-studio.desktop'
         self.assertIn(f'Exec="{wallpaper}"', wallpaper_entry.read_text())
         self.assertIn('io.local.WallpaperStudio', wallpaper_entry.read_text())
+        settings = self.home / '.local/bin/pc-settings'
+        self.assertTrue(settings.is_symlink())
+        self.assertEqual(settings.resolve(), binary)
+        settings_entry = self.home / '.local/share/applications/pc-settings.desktop'
+        self.assertIn(f'Exec="{settings}"', settings_entry.read_text())
+        self.assertIn('io.local.PcSettings', settings_entry.read_text())
         self.assertEqual(config.read_text(), '{"modules-left":["clock"]}')
 
     def test_wallpaper_studio_installer_works_outside_repository(self):
@@ -262,8 +282,9 @@ class InstallTests(unittest.TestCase):
 
     def test_update_keeps_profiles_separate_and_omits_secrets(self):
         repo = Path(self.temp.name) / 'repo'
+        # Simulate a source checkout, without locally generated CFFI libraries.
         shutil.copytree(ROOT, repo, symlinks=True,
-                        ignore=shutil.ignore_patterns('.git', 'node_modules', '__pycache__', 'graphify-out', 'target'))
+                        ignore=shutil.ignore_patterns('.git', 'node_modules', '__pycache__', 'graphify-out', 'target', '*.so'))
         config = self.install('desktop', repo)
         marker = repo / 'laptop/hypr/marker'
         marker.write_text('preserve notebook\n')

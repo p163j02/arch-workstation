@@ -3,8 +3,9 @@
 import importlib.util
 from pathlib import Path
 import sys
+import tempfile
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / 'scripts'
@@ -20,6 +21,28 @@ popup_spec.loader.exec_module(popup_manager)
 
 
 class NativeWifiHelpers(unittest.TestCase):
+    def test_close_hides_window_even_when_dispatch_is_unavailable(self):
+        panel = wifi_panel.WifiPanel.__new__(wifi_panel.WifiPanel)
+        panel.generation = 'current'
+        panel.running = True
+        panel.window = MagicMock()
+        panel.executor = MagicMock()
+        with patch.object(wifi_panel.subprocess, 'Popen', side_effect=OSError('unavailable')):
+            with patch.object(wifi_panel.Gtk, 'main_quit'):
+                panel.request_popup_close()
+        self.assertFalse(panel.running)
+        panel.window.hide.assert_called_once()
+        panel.window.destroy.assert_called_once()
+        panel.executor.shutdown.assert_called_once_with(wait=False, cancel_futures=True)
+
+    def test_old_panel_cannot_remove_replacement_pid(self):
+        with tempfile.TemporaryDirectory() as temp:
+            pid_file = Path(temp) / 'wifi-panel.pid'
+            pid_file.write_text('replacement')
+            with patch.object(wifi_panel, 'PID_FILE', pid_file):
+                wifi_panel.clear_pid_file()
+            self.assertEqual(pid_file.read_text(), 'replacement')
+
     def test_saved_personal_network_prompts_without_activation(self):
         panel = wifi_panel.WifiPanel.__new__(wifi_panel.WifiPanel)
         panel.local_busy = False
@@ -158,9 +181,9 @@ class NativeWifiHelpers(unittest.TestCase):
             self.assertTrue((SCRIPTS / 'fast-client').is_file())
 
     def test_popup_cmdline_guard(self):
-        self.assertTrue(popup_manager._is_wifi_panel_cmdline(['/usr/bin/python3', str(popup_manager.WIFI_PANEL)]))
-        self.assertTrue(popup_manager._is_wifi_panel_cmdline(['/usr/bin/python3', '/tmp/wifi-panel.py']))
-        self.assertFalse(popup_manager._is_wifi_panel_cmdline(['/usr/bin/python3', '/tmp/other.py']))
+        self.assertTrue(popup_manager._is_native_panel_cmdline('wifi', ['/usr/bin/python3', str(popup_manager.WIFI_PANEL)]))
+        self.assertFalse(popup_manager._is_native_panel_cmdline('wifi', ['/usr/bin/python3', '/tmp/wifi-panel.py']))
+        self.assertFalse(popup_manager._is_native_panel_cmdline('wifi', ['/usr/bin/python3', '/tmp/other.py']))
 
 
 if __name__ == '__main__':

@@ -1,6 +1,6 @@
-(defwidget cc-wifi-widget []
+(defwidget cc-wifi-widget [generation]
  (box :orientation "v" :space-evenly false :spacing 14
-  (cc-header :icon "󰤨" :title "Wi-Fi")
+  (cc-header :generation generation :icon "󰤨" :title "Wi-Fi")
   (box :space-evenly false :spacing 12
    (label :text "Wi-Fi" :hexpand true :xalign 0)
    (button :class {cc_wifi.enabled ? "cc-toggle on" : "cc-toggle"} :timeout "15s" :active {cc_wifi.available && !cc_wifi.busy} :onclick "scripts/backend.py action wifi toggle" {cc_wifi.enabled ? "󰨚" : "󰨙"}))

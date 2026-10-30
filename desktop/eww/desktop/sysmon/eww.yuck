@@ -1,3 +1,6 @@
+;; Ajustes persistentes administrados por la app Rust Configuración del PC.
+(deflisten pc_settings :initial `{"version":1,"bar_opacity":0.82,"panel_opacity":{},"sysmon_opacity":1.0,"anchor":"top right","x":12,"y":25,"sections":{"cpu":true,"ram":true,"disk":true,"cpu_temp":true,"gpu_temp":true,"top_cpu":true,"top_ram":true}}`
+  `~/.local/bin/pc-settings --watch-widgets`)
 ;; Monitor de recursos: RAM como barra y disco con actividad real de E/S.
 (deflisten border_data
   :initial `{"style":"border: 1px solid rgba(64, 191, 191, 0.500); border-radius: 20px; box-shadow: 0 0 6px rgba(64, 191, 191, 0.300), inset 0 0 4px rgba(64, 191, 191, 0.300);","primary":"#40bfbf","soft":"#83d5d5","text":"#f0fafa","muted":"#a2d0d7","background":"#071118","card":"#142a32","track":"#233d46","separator":"#2a5b61","warning":"#ebcb8b","danger":"#ff7189"}`
@@ -78,7 +81,7 @@
 
 (defwidget temp-chip [icon label value color graph]
   (box :class "temp-chip" :orientation "v" :space-evenly false :spacing 4 :hexpand true
-    :style "background-color: ${border_data.card}; border-color: ${border_data.separator};"
+    :style "background-color: alpha(${border_data.card}, ${pc_settings.sysmon_opacity}); border-color: ${border_data.separator};"
     :tooltip "${label}: historial real, últimas 24 muestras (5 s por muestra)"
     (box :orientation "h" :space-evenly false :spacing 8 :halign "center"
       (nerd-icon :name icon :size 24)
@@ -106,24 +109,27 @@
 
 (defwidget sysmon []
   (box :class "sysmon-card" :orientation "v" :space-evenly false :spacing 10
-    :style "${border_data.style} background-color: ${border_data.background}; color: ${border_data.text};"
-    (cpu-activity)
-    (disk-activity)
-    (ram-activity)
-    (box :class "monitor-section" :orientation "v" :space-evenly false :spacing 9
+    :style "${border_data.style} background-color: alpha(${border_data.background}, ${pc_settings.sysmon_opacity}); color: ${border_data.text};"
+    (box :visible {pc_settings.sections.cpu} (cpu-activity))
+    (box :visible {pc_settings.sections.disk} (disk-activity))
+    (box :visible {pc_settings.sections.ram} (ram-activity))
+    (box :visible {pc_settings.sections.cpu_temp || pc_settings.sections.gpu_temp}
+      :class "monitor-section" :orientation "v" :space-evenly false :spacing 9
       :style "border-color: ${border_data.separator};"
       (section-header :icon "temperatura" :title "TEMPERATURA" :mark "")
       (box :orientation "h" :spacing 10
-        (temp-chip :icon "cpu" :label "CPU" :value {temp_data.cpu} :color {temp_data.cpu_color} :graph {temp_data.cpu_graph})
-        (temp-chip :icon "gpu" :label "GPU" :value {temp_data.gpu} :color {temp_data.gpu_color} :graph {temp_data.gpu_graph})))
-    (box :class "monitor-section" :orientation "v" :space-evenly false :spacing 6
+        (box :visible {pc_settings.sections.cpu_temp} :hexpand true
+          (temp-chip :icon "cpu" :label "CPU" :value {temp_data.cpu} :color {temp_data.cpu_color} :graph {temp_data.cpu_graph}))
+        (box :visible {pc_settings.sections.gpu_temp} :hexpand true
+          (temp-chip :icon "gpu" :label "GPU" :value {temp_data.gpu} :color {temp_data.gpu_color} :graph {temp_data.gpu_graph}))))
+    (box :visible {pc_settings.sections.top_cpu} :class "monitor-section" :orientation "v" :space-evenly false :spacing 6
       :style "border-color: ${border_data.separator};"
       (section-header :icon "top_cpu" :title "TOP CPU" :mark "")
       (proc-row :name {proc_data.cpu0_name} :value {proc_data.cpu0_pct} :unit "%" :color {border_data.soft})
       (proc-row :name {proc_data.cpu1_name} :value {proc_data.cpu1_pct} :unit "%" :color {border_data.soft})
       (proc-row :name {proc_data.cpu2_name} :value {proc_data.cpu2_pct} :unit "%" :color {border_data.soft})
       (proc-row :name {proc_data.cpu3_name} :value {proc_data.cpu3_pct} :unit "%" :color {border_data.soft}))
-    (box :class "process-section-last" :orientation "v" :space-evenly false :spacing 6
+    (box :visible {pc_settings.sections.top_ram} :class "process-section-last" :orientation "v" :space-evenly false :spacing 6
       (section-header :icon "top_ram" :title "TOP RAM" :mark "")
       (proc-row :name {proc_data.ram0_name} :value {proc_data.ram0_mb} :unit " MiB" :color {border_data.soft})
       (proc-row :name {proc_data.ram1_name} :value {proc_data.ram1_mb} :unit " MiB" :color {border_data.soft})

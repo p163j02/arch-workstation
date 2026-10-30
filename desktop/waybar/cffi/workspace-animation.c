@@ -36,6 +36,63 @@ typedef struct {
     gint64 started;
 } Animation;
 
+/* Waybar 0.15 sends the removed `dispatch workspace N` IPC request.
+ * This config uses `{icon} {windows}` with numeric icons and alpha--zeta.
+ * Read only that first token; app icons and titles must never select a target.
+ */
+static int workspace_id_from_label(const char *text) {
+    if (!text) return 0;
+    char **parts = g_strsplit_set(text, " \t\r\n", 2);
+    const char *greek[] = {"α", "β", "γ", "δ", "ε", "ζ"};
+    int id = 0;
+    for (guint i = 0; i < G_N_ELEMENTS(greek); i++)
+        if (g_strcmp0(parts[0], greek[i]) == 0) id = 7 + (int)i;
+    if (!id && parts[0] && g_ascii_isdigit(parts[0][0])) {
+        char *end = NULL;
+        gint64 number = g_ascii_strtoll(parts[0], &end, 10);
+        if (*end == '\0' && number > 0 && number <= G_MAXINT) id = (int)number;
+    }
+    g_strfreev(parts);
+    return id;
+}
+
+static const char *workspace_label(GtkWidget *widget) {
+    if (GTK_IS_LABEL(widget) && gtk_style_context_has_class(
+            gtk_widget_get_style_context(widget), "workspace-label"))
+        return gtk_label_get_text(GTK_LABEL(widget));
+    if (!GTK_IS_CONTAINER(widget)) return NULL;
+    GList *children = gtk_container_get_children(GTK_CONTAINER(widget));
+    const char *text = NULL;
+    for (GList *it = children; it && !text; it = it->next)
+        text = workspace_label(it->data);
+    g_list_free(children);
+    return text;
+}
+
+static gboolean workspace_event(GtkWidget *widget, GdkEvent *event, gpointer data) {
+    (void)data;
+    if (event->type != GDK_BUTTON_PRESS) return FALSE;
+    int id = workspace_id_from_label(workspace_label(widget));
+    if (!id) return FALSE;
+    char *expression = g_strdup_printf("hl.dispatch(hl.dsp.focus({ workspace = \"%d\" }))", id);
+    char *argv[] = {"hyprctl", "eval", expression, NULL};
+    GError *error = NULL;
+    if (!g_spawn_async(NULL, argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, &error)) {
+        g_warning("Cannot activate workspace %d: %s", id, error->message);
+        g_error_free(error);
+    }
+    g_free(expression);
+    /* ::event precedes ::button-press-event, preventing the legacy handler. */
+    return TRUE;
+}
+
+static void connect_workspace_click(GtkWidget *child, gpointer data) {
+    if (!GTK_IS_BUTTON(child)) return;
+    if (!g_signal_handler_find(child, G_SIGNAL_MATCH_FUNC | G_SIGNAL_MATCH_DATA,
+            0, 0, NULL, G_CALLBACK(workspace_event), data))
+        g_signal_connect(child, "event", G_CALLBACK(workspace_event), data);
+}
+
 static void report_layout(Animation *animation, const char *phase) {
     if (!animation->state_path) return;
     char *directory = g_path_get_dirname(animation->state_path);
@@ -99,6 +156,8 @@ static void measure_widths(Animation *animation) {
     GList *children = gtk_container_get_children(GTK_CONTAINER(animation->workspaces));
     for (GList *it = children; it; it = it->next) {
         GtkWidget *child = it->data;
+        /* Native Waybar packs new buttons directly into its GtkBox. */
+        connect_workspace_click(child, animation);
         if (!gtk_widget_get_visible(child)) continue;
         int width = 0;
         gtk_widget_get_preferred_width(child, &width, NULL);
@@ -273,6 +332,10 @@ void wbcffi_deinit(void *instance) {
         g_object_remove_weak_pointer(G_OBJECT(animation->viewport), (gpointer *)&animation->viewport);
     }
     if (animation->workspaces) {
+        GList *buttons = gtk_container_get_children(GTK_CONTAINER(animation->workspaces));
+        for (GList *it = buttons; it; it = it->next)
+            g_signal_handlers_disconnect_by_data(it->data, animation);
+        g_list_free(buttons);
         g_signal_handlers_disconnect_by_data(animation->workspaces, animation);
         g_object_remove_weak_pointer(G_OBJECT(animation->workspaces), (gpointer *)&animation->workspaces);
     }

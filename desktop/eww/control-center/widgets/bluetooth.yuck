@@ -1,6 +1,6 @@
-(defwidget cc-bluetooth-widget []
+(defwidget cc-bluetooth-widget [generation]
  (box :orientation "v" :space-evenly false :spacing 14
-  (cc-header :icon "󰂯" :title "Bluetooth")
+  (cc-header :generation generation :icon "󰂯" :title "Bluetooth")
   (box :space-evenly false :spacing 12
    (label :text {cc_bluetooth.status} :hexpand true :xalign 0 :limit-width 26)
    (button :class {cc_bluetooth.enabled ? "cc-toggle on" : "cc-toggle"} :timeout "15s" :active {cc_bluetooth.available && !cc_bluetooth.busy} :onclick "scripts/backend.py action bluetooth toggle" {cc_bluetooth.enabled ? "󰨚" : "󰨙"}))

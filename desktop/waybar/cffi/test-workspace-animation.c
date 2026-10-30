@@ -25,6 +25,18 @@ static void test_frames(void) {
 }
 
 int main(void) {
+    const char *icons[] = {"1", "2", "3", "4", "5", "6", "α", "β", "γ", "δ", "ε", "ζ"};
+    for (guint i = 0; i < G_N_ELEMENTS(icons); i++) {
+        char *label = g_strdup_printf("%s 󰈹 󰨞", icons[i]);
+        g_assert_cmpint(workspace_id_from_label(label), ==, (int)i + 1);
+        g_free(label);
+    }
+    g_assert_cmpint(workspace_id_from_label("13 󰈹"), ==, 13);
+    g_assert_cmpint(workspace_id_from_label("42 "), ==, 42);
+    const char *invalid[] = {NULL, "", " 1", "󰈹 1", "0", "-1", "special", "1x", "αβ", "999999999999999999999999"};
+    for (guint i = 0; i < G_N_ELEMENTS(invalid); i++)
+        g_assert_cmpint(workspace_id_from_label(invalid[i]), ==, 0);
+    g_print("Workspace click targets: numeric/Greek icons and invalid labels passed\n");
     char *directory = g_dir_make_tmp("waybar-animation-test-XXXXXX", NULL);
     g_assert_nonnull(directory);
     char *path = g_build_filename(directory, "state.json", NULL);

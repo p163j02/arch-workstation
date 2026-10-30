@@ -1,6 +1,6 @@
-(defwidget cc-calendar-widget []
+(defwidget cc-calendar-widget [generation]
  (box :orientation "v" :space-evenly false :spacing 14
-  (cc-header :icon "󰃭" :title "Calendario")
+  (cc-header :generation generation :icon "󰃭" :title "Calendario")
   (box :space-evenly false :spacing 8
    (button :timeout "5s" :onclick "scripts/calendar_state.py action prev" "󰅁")
    (label :text {cc_calendar.title} :hexpand true :class "cc-title")

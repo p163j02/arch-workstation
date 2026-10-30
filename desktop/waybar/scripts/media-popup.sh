@@ -1,2 +1,2 @@
 #!/bin/bash
-python3 ~/.config/waybar/scripts/media-widget.py &
+exec "${XDG_CONFIG_HOME:-$HOME/.config}/eww/control-center/scripts/popup-manager.py" media

@@ -1,6 +1,6 @@
-(defwidget cc-nightlight-widget []
+(defwidget cc-nightlight-widget [generation]
  (box :orientation "v" :space-evenly false :spacing 14
-  (cc-header :icon "󰛨" :title "Atenuador de pantalla")
+  (cc-header :generation generation :icon "󰛨" :title "Atenuador de pantalla")
   (box :space-evenly false :spacing 12
    (label :class "cc-row-icon" :text "󰛩")
    (scale :hexpand true :min 0 :max 80 :value {cc_nightlight.percent} :active {cc_nightlight.available} :timeout "8s" :onchange "scripts/backend.py action nightlight set {}")

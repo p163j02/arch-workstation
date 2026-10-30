@@ -10,12 +10,12 @@
 (deflisten cc_nightlight :initial `{"available":false,"running":false,"percent":0,"gamma":100,"temperature":6500,"warm":false,"error":"","busy":false}` `scripts/backend.py watch nightlight`)
 (deflisten cc_power :initial `{"available":false,"pending":"","confirmation":"","error":"","busy":false}` `scripts/backend.py watch power`)
 
-(defwidget cc-header [icon title ?settings ?settings_tip]
+(defwidget cc-header [icon title generation ?settings ?settings_tip]
   (box :class "cc-header" :space-evenly false :spacing 12
     (label :text icon :class "cc-icon")
     (label :text title :class "cc-title" :xalign 0 :hexpand true)
     (button :class "cc-settings" :visible {settings != ""} :tooltip settings_tip :timeout "5s" :onclick settings "󰒓")
-    (button :class "cc-close" :timeout "5s" :tooltip "Cerrar · Escape" :onclick "scripts/popup-manager.py close" "󰅖")))
+    (button :class "cc-close" :timeout "5s" :tooltip "Cerrar · Escape" :onclick "scripts/popup-manager.py dismiss ${generation}" "󰅖")))
 (defwidget cc-section [text]
   (label :class "cc-section" :text text :xalign 0))
 (defwidget cc-error [text]
@@ -36,40 +36,40 @@
 (include "widgets/bluetooth.yuck")
 (include "widgets/airpods.yuck")
 
-(defwindow cc-volume [maxheight]
+(defwindow cc-volume [maxheight generation]
  :geometry (geometry :width "380px" :height "1px" :anchor "top left")
  :stacking "overlay" :exclusive false :focusable false :namespace "waybar-control-center"
- (cc-static-shell :kind "volume" (cc-volume-widget)))
-(defwindow cc-wifi [maxheight]
+ (cc-static-shell :kind "volume" (cc-volume-widget :generation generation)))
+(defwindow cc-wifi [maxheight generation]
  :geometry (geometry :width "380px" :height "1px" :anchor "top left")
  :stacking "overlay" :exclusive false :focusable false :namespace "waybar-control-center"
- (cc-shell :kind "wifi" :maxheight maxheight (cc-wifi-widget)))
-(defwindow cc-brightness [maxheight]
+ (cc-shell :kind "wifi" :maxheight maxheight (cc-wifi-widget :generation generation)))
+(defwindow cc-brightness [maxheight generation]
  :geometry (geometry :width "380px" :height "1px" :anchor "top left")
  :stacking "overlay" :exclusive false :focusable false :namespace "waybar-control-center"
- (cc-shell :kind "brightness" :maxheight maxheight (cc-brightness-widget)))
-(defwindow cc-calendar [maxheight]
+ (cc-shell :kind "brightness" :maxheight maxheight (cc-brightness-widget :generation generation)))
+(defwindow cc-calendar [maxheight generation]
  :geometry (geometry :width "380px" :height "1px" :anchor "top left")
  :stacking "overlay" :exclusive false :focusable false :namespace "waybar-control-center"
- (cc-static-shell :kind "calendar" (cc-calendar-widget)))
-(defwindow cc-bluetooth [maxheight]
+ (cc-static-shell :kind "calendar" (cc-calendar-widget :generation generation)))
+(defwindow cc-bluetooth [maxheight generation]
  :geometry (geometry :width "380px" :height "1px" :anchor "top left")
  :stacking "overlay" :exclusive false :focusable false :namespace "waybar-control-center"
- (cc-shell :kind "bluetooth" :maxheight maxheight (cc-bluetooth-widget)))
-(defwindow cc-airpods [maxheight]
+ (cc-shell :kind "bluetooth" :maxheight maxheight (cc-bluetooth-widget :generation generation)))
+(defwindow cc-airpods [maxheight generation]
  :geometry (geometry :width "420px" :height "1px" :anchor "top left")
  :stacking "overlay" :exclusive false :focusable false :namespace "waybar-control-center"
- (cc-shell :kind "airpods" :maxheight maxheight (cc-airpods-widget)))
+ (cc-shell :kind "airpods" :maxheight maxheight (cc-airpods-widget :generation generation)))
 
-(defwindow cc-profiles [maxheight]
+(defwindow cc-profiles [maxheight generation]
  :geometry (geometry :width "380px" :height "1px" :anchor "top left")
  :stacking "overlay" :exclusive false :focusable false :namespace "waybar-control-center"
- (cc-static-shell :kind "profiles" (cc-profiles-widget)))
-(defwindow cc-nightlight [maxheight]
+ (cc-static-shell :kind "profiles" (cc-profiles-widget :generation generation)))
+(defwindow cc-nightlight [maxheight generation]
  :geometry (geometry :width "380px" :height "1px" :anchor "top left")
  :stacking "overlay" :exclusive false :focusable false :namespace "waybar-control-center"
- (cc-shell :kind "nightlight" :maxheight maxheight (cc-nightlight-widget)))
-(defwindow cc-power [maxheight]
+ (cc-shell :kind "nightlight" :maxheight maxheight (cc-nightlight-widget :generation generation)))
+(defwindow cc-power [maxheight generation]
  :geometry (geometry :width "380px" :height "1px" :anchor "top left")
  :stacking "overlay" :exclusive false :focusable false :namespace "waybar-control-center"
- (cc-shell :kind "power" :maxheight maxheight (cc-power-widget)))
+ (cc-shell :kind "power" :maxheight maxheight (cc-power-widget :generation generation)))

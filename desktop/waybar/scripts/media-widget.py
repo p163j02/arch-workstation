@@ -1,12 +1,22 @@
 #!/usr/bin/env python3
 import gi
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk, GLib, Gdk, GdkPixbuf
+gi.require_version('GtkLayerShell', '0.1')
+from gi.repository import Gtk, GLib, Gdk, GdkPixbuf, GtkLayerShell
 import subprocess, urllib.request, threading, os, sys
+from pathlib import Path
+
+CONTROL_ROOT = Path(__file__).resolve().parents[2] / 'eww' / 'control-center'
+sys.path.insert(0, str(CONTROL_ROOT / 'scripts'))
+import backend
+
+POPUP_MANAGER = CONTROL_ROOT / 'scripts' / 'popup-manager.py'
+PID_FILE = backend.RUN / 'media-panel.pid'
+
 
 def run(cmd):
     try:
-        return subprocess.check_output(cmd, shell=True, text=True).strip()
+        return subprocess.check_output(cmd, shell=True, text=True, timeout=1).strip()
     except:
         return ''
 
@@ -156,13 +166,26 @@ class ProgressBar(Gtk.DrawingArea):
 
 
 class MediaWidget(Gtk.Window):
-    def __init__(self):
+    def __init__(self, x, y, width, maxheight, screen, monitor, generation):
         super().__init__()
+        self.generation = generation
         self.set_title("media-widget")
         self.set_decorated(False)
-        self.set_keep_above(True)
         self.set_resizable(False)
-        self.set_type_hint(Gdk.WindowTypeHint.POPUP_MENU)
+        GtkLayerShell.init_for_window(self)
+        GtkLayerShell.set_namespace(self, 'waybar-control-center')
+        GtkLayerShell.set_layer(self, GtkLayerShell.Layer.OVERLAY)
+        GtkLayerShell.set_anchor(self, GtkLayerShell.Edge.TOP, True)
+        GtkLayerShell.set_anchor(self, GtkLayerShell.Edge.LEFT, True)
+        GtkLayerShell.set_margin(self, GtkLayerShell.Edge.LEFT, x)
+        GtkLayerShell.set_margin(self, GtkLayerShell.Edge.TOP, y)
+        GtkLayerShell.set_exclusive_zone(self, 0)
+        GtkLayerShell.set_keyboard_mode(self, GtkLayerShell.KeyboardMode.ON_DEMAND)
+        display = Gdk.Display.get_default()
+        GtkLayerShell.set_monitor(self, display.get_monitor(screen))
+        self.set_size_request(width, -1)
+        self.connect('map-event', self.on_mapped)
+        self.connect('delete-event', self.request_close)
         screen = self.get_screen()
         visual = screen.get_rgba_visual()
         if visual: self.set_visual(visual)
@@ -172,14 +195,33 @@ class MediaWidget(Gtk.Window):
         provider.load_from_data(CSS)
         Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
+        # The Rust settings app writes this GTK3-compatible shared stylesheet.
+        self.get_style_context().add_class('pc-settings-media')
+        self.settings_theme = Gtk.CssProvider()
+        Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), self.settings_theme, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1)
+        self.settings_signature = None
+        self.update_settings_theme()
+        GLib.timeout_add(500, self.update_settings_theme)
         self.current_art_url = ''
         self.duration = 0
         self.build_ui()
-        self.update_info()
+        GLib.idle_add(lambda: self.update_info() and False)
         GLib.timeout_add(1000, self.update_progress)
         GLib.timeout_add(2000, self.update_info)
         GLib.timeout_add(40,   self.tick_marquee)
-        self.connect('key-press-event', lambda w, e: Gtk.main_quit() if e.keyval == Gdk.KEY_Escape else None)
+        self.connect('key-press-event', self.on_key)
+
+    def update_settings_theme(self):
+        path = CONTROL_ROOT / 'wallpaper-studio.scss'
+        try:
+            stat = path.stat()
+            signature = (stat.st_ino, stat.st_mtime_ns, stat.st_size)
+            if signature != self.settings_signature:
+                self.settings_theme.load_from_data(path.read_bytes())
+                self.settings_signature = signature
+        except (OSError, GLib.Error):
+            pass
+        return True
 
     def build_ui(self):
         outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
@@ -187,6 +229,16 @@ class MediaWidget(Gtk.Window):
         outer.set_margin_bottom(12)
         outer.set_margin_start(12)
         outer.set_margin_end(12)
+
+        header = Gtk.Box()
+        title = Gtk.Label(label='Reproductor')
+        title.set_xalign(0)
+        header.pack_start(title, True, True, 0)
+        close = Gtk.Button(label='󰅖')
+        close.set_tooltip_text('Cerrar · Escape')
+        close.connect('clicked', self.request_close)
+        header.pack_end(close, False, False, 0)
+        outer.pack_start(header, False, False, 4)
 
         # ── Row 1: art + info ──
         top = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
@@ -284,6 +336,26 @@ class MediaWidget(Gtk.Window):
 
         outer.pack_start(vol_row, False, False, 0)
         self.add(outer)
+
+    def on_mapped(self, *_):
+        (backend.RUN / 'media-panel.ready').write_text(self.generation)
+        return False
+
+    def on_key(self, _widget, event):
+        if event.keyval == Gdk.KEY_Escape:
+            self.request_close()
+            return True
+        return False
+
+    def request_close(self, *_):
+        self.hide()
+        self.destroy()
+        Gtk.main_quit()
+        try:
+            subprocess.Popen([str(POPUP_MANAGER), 'dismiss', self.generation], close_fds=True)
+        except OSError:
+            pass
+        return True
 
     # ── Callbacks ──
 
@@ -415,13 +487,17 @@ class MediaWidget(Gtk.Window):
 
 
 if __name__ == '__main__':
-    script_name = os.path.basename(__file__)
-    pid = run(f"pgrep -f {script_name}").split('\n')
-    others = [p for p in pid if p and p != str(os.getpid())]
-    if others:
-        for p in others: run(f"kill {p}")
-        sys.exit(0)
-
-    app = MediaWidget()
+    if len(sys.argv) == 1:
+        os.execv(str(POPUP_MANAGER), [str(POPUP_MANAGER), 'media'])
+    x, y, width, maxheight, screen = map(int, sys.argv[1:6])
+    monitor, generation = sys.argv[6:8]
+    app = MediaWidget(x, y, width, maxheight, screen, monitor, generation)
     app.show_all()
-    Gtk.main()
+    try:
+        Gtk.main()
+    finally:
+        try:
+            if PID_FILE.read_text().strip() == str(os.getpid()):
+                PID_FILE.unlink(missing_ok=True)
+        except FileNotFoundError:
+            pass

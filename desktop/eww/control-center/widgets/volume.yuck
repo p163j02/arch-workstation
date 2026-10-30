@@ -1,6 +1,6 @@
-(defwidget cc-volume-widget []
+(defwidget cc-volume-widget [generation]
  (box :orientation "v" :space-evenly false :spacing 14
-  (cc-header :icon "󰕾" :title "Audio" :settings "python3 scripts/settings-launcher.py volume" :settings_tip "Elegir gestor de audio")
+  (cc-header :generation generation :icon "󰕾" :title "Audio" :settings "python3 scripts/settings-launcher.py volume" :settings_tip "Elegir gestor de audio")
   (box :space-evenly false :spacing 12
    (button :class "cc-mute" :timeout "5s" :active {cc_volume.available} :onclick "scripts/backend.py action volume mute" :tooltip "Silenciar / reactivar" {cc_volume.mute ? "󰝟" : "󰕾"})
    (scale :hexpand true :min 0 :max 100 :value {cc_volume.percent} :active {cc_volume.available} :timeout "5s" :onchange "scripts/backend.py action volume set {}")

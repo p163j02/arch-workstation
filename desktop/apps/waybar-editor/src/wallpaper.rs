@@ -262,15 +262,31 @@ impl View {
 }
 
 fn build(app: &adw::Application) {
-    let paths = Paths::discover();
     let window = adw::ApplicationWindow::builder()
         .application(app)
         .title("Wallpaper Studio")
         .default_width(1100)
         .default_height(780)
         .build();
+    let content = build_page(&window);
+    window.set_content(Some(&content));
+    window.present();
+}
+
+pub(crate) fn build_page(window: &adw::ApplicationWindow) -> gtk::Widget {
+    let window = window.clone();
+    let paths = Paths::discover();
     let root = gtk::Box::new(gtk::Orientation::Vertical, 0);
     let header = adw::HeaderBar::new();
+    if window
+        .application()
+        .and_then(|app| app.application_id())
+        .as_deref()
+        == Some("io.local.PcSettings")
+    {
+        header.set_show_start_title_buttons(false);
+        header.set_show_end_title_buttons(false);
+    }
     header.set_title_widget(Some(&adw::WindowTitle::new(
         "Wallpaper Studio",
         "Fondos y colores del sistema",
@@ -394,7 +410,6 @@ fn build(app: &adw::Application) {
             .build(),
     );
     root.append(&body);
-    window.set_content(Some(&root));
     let view = Rc::new(View {
         picture,
         name,
@@ -601,7 +616,7 @@ fn build(app: &adw::Application) {
             glib::Propagation::Proceed
         }
     });
-    window.present();
+    root.upcast()
 }
 
 fn load_library(view: &View, list: &gtk::ListBox, roots: Vec<PathBuf>, library: &WallpaperLibrary) {

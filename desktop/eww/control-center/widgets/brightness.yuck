@@ -1,6 +1,6 @@
-(defwidget cc-brightness-widget []
+(defwidget cc-brightness-widget [generation]
  (box :orientation "v" :space-evenly false :spacing 14
-  (cc-header :icon "󰃠" :title "Pantallas y luz nocturna")
+  (cc-header :generation generation :icon "󰃠" :title "Pantallas y luz nocturna")
   (cc-section :text "Brillo · sincronizar pantallas")
   (box :space-evenly false :spacing 12
    (label :class "cc-row-icon" :text "󰃟")

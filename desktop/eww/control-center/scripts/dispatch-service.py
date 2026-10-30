@@ -88,7 +88,8 @@ def validate(request):
     if not isinstance(args,list) or len(args)>3 or any(not isinstance(a,str) or len(a)>256 for a in args):
         raise ValueError('Invalid arguments')
     if kind=='popup':
-        if len(args)>2 or (args and args[0] not in {*popup.WINDOWS,'close','outside','cleanup'}):raise ValueError('Invalid popup')
+        if len(args)>2 or (args and args[0] not in {*popup.WINDOWS,*popup.NATIVE_PANELS,'close','outside','cleanup','dismiss'}):raise ValueError('Invalid popup')
+        if args and args[0]=='dismiss' and len(args)!=2:raise ValueError('Missing popup generation')
     elif kind=='action':
         if len(args)<2 or args[0] not in backend.DEFAULTS:raise ValueError('Invalid action')
         if args[1] in ('set','step','temperature'):

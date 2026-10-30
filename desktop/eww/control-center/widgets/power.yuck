@@ -1,6 +1,6 @@
-(defwidget cc-power-widget []
+(defwidget cc-power-widget [generation]
  (box :orientation "v" :space-evenly false :spacing 14
-  (cc-header :icon "󰐥" :title "Sesión y apagado")
+  (cc-header :generation generation :icon "󰐥" :title "Sesión y apagado")
   (box :orientation "v" :space-evenly false :spacing 8
    (box :space-evenly true :spacing 8
     (button :class "cc-power-option" :timeout "8s" :onclick "scripts/backend.py action power request lock"

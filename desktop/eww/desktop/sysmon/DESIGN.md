@@ -50,3 +50,7 @@ Glifos reales de la tabla del documento en `JetBrainsMono Nerd Font`: CPU ``,
 
 ## Corrección solicitada por el usuario
 La instrucción de conservar la estructura se aplicó inicialmente también a las métricas. Tras las aclaraciones, el orden es CPU → disco → RAM, como en la referencia. Se mantienen las ventanas, se elimina el historial de RAM y se sustituye la curva de ocupación del disco por su actividad de lectura/escritura. Esta sección y las descripciones de datos anteriores reflejan el estado corregido, no la primera implementación.
+
+## Ajustes desde Configuración del PC
+
+La app Rust `pc-settings` permite ocultar secciones, ajustar el fondo y elegir anclaje/desplazamiento. Eww recibe los valores mediante `deflisten pc_settings`; los valores iniciales conservan el diseño original. El orden de las secciones visibles y sus recolectores se mantiene. Consulta `desktop/apps/pc-settings/README.md`.

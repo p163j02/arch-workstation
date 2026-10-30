@@ -6,6 +6,8 @@ Esto configura un **Arch Linux ya instalado**. El particionado, cifrado, arranqu
 
 Para reproducir el notebook actual, consulta [la guía autónoma de laptop](laptop/README.md). Sus entradas principales son `bash laptop/install.sh` y `bash laptop/update.sh`.
 
+El perfil **desktop** incluye [Configuración del PC](desktop/apps/pc-settings/README.md), una app Rust/GTK4 que integra Wallpaper Studio, Waybar Editor, pantallas (resolución/Hz/posición/escala) y ajustes independientes de transparencia y contenido de widgets. Se abre con `pc-settings` o desde Rofi.
+
 ## Instalar en un equipo nuevo
 
 1. Instala Arch Linux x86_64 con un usuario normal que tenga acceso a `sudo`, conexión a Internet y un kernel `linux`, `linux-lts`, `linux-zen` o `linux-hardened`. NVIDIA requiere una tarjeta **Turing o posterior**: la RTX 2080 Super está dentro de este alcance. Los NVIDIA anteriores requieren otro controlador y no están cubiertos por el instalador.

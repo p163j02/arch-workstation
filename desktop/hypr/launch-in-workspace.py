@@ -4,11 +4,16 @@
 Pass the executable and its arguments separately. Hyprland's exec rule is
 per-launch, not a permanent window rule, and does not move existing windows.
 """
-import json
 import os
 import shlex
 import subprocess
 import sys
+
+
+def lua_string(value):
+    """Quote UTF-8 bytes without allowing shell arguments to become Lua code."""
+    return '"' + ''.join(chr(b) if 32 <= b < 127 and b not in (34, 92)
+                         else f'\\{b:03d}' for b in value.encode('utf-8')) + '"'
 
 
 def main():
@@ -16,17 +21,18 @@ def main():
         print("Usage: launch-in-workspace.py COMMAND [ARGUMENT ...]", file=sys.stderr)
         return 2
 
-    workspace = json.loads(subprocess.check_output(
-        ["hyprctl", "-j", "activeworkspace"], text=True
-    ))
-    target = str(workspace["id"]) if workspace["id"] >= 0 else workspace["name"]
-    if any(character in target for character in ",;[]\n\r"):
-        raise ValueError("Unsupported workspace name")
-
     # Preserve desktop entries' working directories and quote each argument.
     command = f"cd {shlex.quote(os.getcwd())} && exec {shlex.join(sys.argv[1:])}"
+    # Resolve and launch in one compositor request. Legacy `dispatch exec` is
+    # no longer supported by Hyprland 0.57's Lua configuration provider.
+    expression = (
+        'local w = hl.get_active_workspace(); '
+        'assert(w, "No active workspace"); '
+        'local target = w.id >= 0 and tostring(w.id) or w.name; '
+        f'hl.exec_cmd({lua_string(command)}, {{ workspace = target .. " silent" }})'
+    )
     result = subprocess.run(
-        ["hyprctl", "dispatch", "exec", f"[workspace {target} silent] {command}"],
+        ["hyprctl", "eval", expression],
         text=True, capture_output=True,
     )
     if result.returncode != 0 or result.stdout.strip() != "ok":
