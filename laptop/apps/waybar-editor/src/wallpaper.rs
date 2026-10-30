@@ -1,5 +1,9 @@
+mod fastfetch;
+mod fastfetch_gallery;
+mod fastfetch_ui;
 mod login;
 mod palette;
+mod terminal;
 mod theme;
 
 use adw::prelude::*;
@@ -12,9 +16,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::rc::Rc;
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
 use theme::{
-    Palette, Paths, Transition, apply_wallpaper, extract_palette, palette_for, save_palette,
+    Palette, Paths, Transition, apply_wallpaper, extract_palette, palette_for, save_preferences,
 };
 
 pub fn run() {
@@ -44,6 +48,24 @@ pub fn run() {
 
 fn cli(args: &[String]) -> Result<()> {
     let paths = Paths::discover();
+    if args == ["--sync-fastfetch"] {
+        if let Some(image) = paths.read_state()?.current {
+            let image = PathBuf::from(image);
+            return fastfetch::sync(&paths, &image, &palette_for(&paths, &image)?);
+        }
+        return Ok(());
+    }
+    if args == ["--sync-terminal"] {
+        if let Some(image) = paths.read_state()?.current {
+            let image = PathBuf::from(image);
+            return terminal::sync(
+                &paths,
+                &palette_for(&paths, &image)?,
+                theme::checked_command,
+            );
+        }
+        return Ok(());
+    }
     if args == ["--sync-login"] {
         if let Some(image) = paths.read_state()?.current {
             let image = PathBuf::from(image);
@@ -54,7 +76,7 @@ fn cli(args: &[String]) -> Result<()> {
     let image = match args {
         [flag] if flag == "--help" || flag == "-h" => {
             println!(
-                "Wallpaper Studio\n\nUso: wallpaper-studio\n     wallpaper-studio --apply RUTA\n     wallpaper-studio --restore\n     wallpaper-studio --sync-login\n\nFondos estáticos y GIF animados, paletas por imagen y transiciones.\nAplica a todos los monitores. Usa awww-daemon y Hyprland."
+                "Wallpaper Studio\n\nUso: wallpaper-studio\n     wallpaper-studio --apply RUTA\n     wallpaper-studio --restore\n     wallpaper-studio --sync-login\n     wallpaper-studio --sync-terminal\n     wallpaper-studio --sync-fastfetch\n\nFondos estáticos y GIF animados, paletas por imagen y transiciones.\nAplica a todos los monitores. Usa awww-daemon y Hyprland."
             );
             return Ok(());
         }
@@ -72,11 +94,13 @@ fn cli(args: &[String]) -> Result<()> {
             }
         },
         [flag, image] if flag == "--apply" => PathBuf::from(image),
-        _ => bail!("Uso: wallpaper-studio [--apply RUTA | --restore | --help]"),
+        _ => bail!(
+            "Uso: wallpaper-studio [--apply RUTA | --restore | --sync-login | --sync-terminal | --sync-fastfetch | --help]"
+        ),
     };
     let palette = palette_for(&paths, &image)?;
     let transition = paths.read_state()?.transition;
-    for warning in apply_wallpaper(&paths, &image, &palette, &transition)? {
+    for warning in apply_wallpaper(&paths, &image, &palette, &transition, None)? {
         eprintln!("{warning}");
     }
     Ok(())
@@ -89,11 +113,12 @@ struct WallpaperLibrary {
 }
 
 impl WallpaperLibrary {
-    fn connect_selection(&self, list: &gtk::ListBox, on_select: impl Fn(PathBuf) + 'static) {
+    fn connect_activation(&self, list: &gtk::ListBox, on_select: impl Fn(PathBuf) + 'static) {
         let files = self.files.clone();
         list.set_activate_on_single_click(true);
-        list.connect_row_selected(move |_, row| {
-            let Some(row) = row else { return };
+        // ListBoxRow::activate is a keybinding action; pointer activation is
+        // delivered by the parent ListBox::row-activated signal.
+        list.connect_row_activated(move |_, row| {
             let path = usize::try_from(row.index())
                 .ok()
                 .and_then(|index| files.borrow().get(index).cloned());
@@ -113,9 +138,10 @@ struct View {
     save: gtk::Button,
     reset: gtk::Button,
     colors: Vec<gtk::ColorDialogButton>,
+    fastfetch: fastfetch_ui::Editor,
     selected: Rc<RefCell<Option<PathBuf>>>,
     generation: Rc<Cell<u64>>,
-    timer: Rc<RefCell<Option<gtk::TickCallbackId>>>,
+    timer: Rc<RefCell<Option<glib::SourceId>>>,
     paths: Paths,
 }
 
@@ -157,6 +183,7 @@ impl View {
         self.apply.set_sensitive(enabled);
         self.save.set_sensitive(enabled);
         self.reset.set_sensitive(enabled);
+        self.fastfetch.widget.set_sensitive(enabled);
         for button in &self.colors {
             button.set_sensitive(enabled);
         }
@@ -182,15 +209,18 @@ impl View {
             let result = gio::spawn_blocking(move || -> Result<_> {
                 let palette = palette_for(&paths, &path)?;
                 let data = fs::read(&path).context("No se pudo leer la vista previa")?;
-                Ok((palette, data))
+                let fastfetch = fastfetch::settings_for(&paths, &path)?;
+                Ok((palette, data, fastfetch))
             })
             .await;
             if view.generation.get() != generation {
                 return;
             }
             match result {
-                Ok(Ok((palette, data))) => {
+                Ok(Ok((palette, data, fastfetch))) => {
                     view.set_palette(&palette);
+                    view.fastfetch
+                        .load(view.selected.borrow().as_deref().unwrap(), &fastfetch);
                     match view.preview(&data) {
                         Ok(animated) => {
                             view.actions(true);
@@ -232,8 +262,12 @@ impl View {
             .set_paintable(Some(&gdk::Texture::for_pixbuf(&iter.pixbuf())));
         let animated = !animation.is_static_image();
         if animated {
-            let timer = self.picture.add_tick_callback(move |picture, _| {
-                if iter.advance(SystemTime::now()) {
+            let weak_picture = self.picture.downgrade();
+            let timer = glib::timeout_add_local(Duration::from_millis(16), move || {
+                let Some(picture) = weak_picture.upgrade() else {
+                    return glib::ControlFlow::Break;
+                };
+                if picture.is_mapped() && iter.advance(SystemTime::now()) {
                     picture.set_paintable(Some(&gdk::Texture::for_pixbuf(&iter.pixbuf())));
                 }
                 glib::ControlFlow::Continue
@@ -245,15 +279,31 @@ impl View {
 }
 
 fn build(app: &adw::Application) {
-    let paths = Paths::discover();
     let window = adw::ApplicationWindow::builder()
         .application(app)
         .title("Wallpaper Studio")
         .default_width(1100)
         .default_height(780)
         .build();
+    let content = build_page(&window);
+    window.set_content(Some(&content));
+    window.present();
+}
+
+pub(crate) fn build_page(window: &adw::ApplicationWindow) -> gtk::Widget {
+    let window = window.clone();
+    let paths = Paths::discover();
     let root = gtk::Box::new(gtk::Orientation::Vertical, 0);
     let header = adw::HeaderBar::new();
+    if window
+        .application()
+        .and_then(|app| app.application_id())
+        .as_deref()
+        == Some("io.local.PcSettings")
+    {
+        header.set_show_start_title_buttons(false);
+        header.set_show_end_title_buttons(false);
+    }
     header.set_title_widget(Some(&adw::WindowTitle::new(
         "Wallpaper Studio",
         "Fondos y colores del sistema",
@@ -335,11 +385,13 @@ fn build(app: &adw::Application) {
     }
     detail.append(&swatches);
     let palette_actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-    let save = gtk::Button::with_label("Guardar paleta");
+    let save = gtk::Button::with_label("Guardar ajustes del fondo");
     let reset = gtk::Button::with_label("Extraer de nuevo");
     palette_actions.append(&save);
     palette_actions.append(&reset);
     detail.append(&palette_actions);
+    let fastfetch = fastfetch_ui::Editor::new(&paths, &window);
+    detail.append(&fastfetch.widget);
     let transitions = gtk::Box::new(gtk::Orientation::Horizontal, 12);
     transitions.append(&gtk::Label::new(Some("Transición")));
     let effects = ["fade", "wipe", "wave", "center", "outer", "random", "none"];
@@ -377,7 +429,6 @@ fn build(app: &adw::Application) {
             .build(),
     );
     root.append(&body);
-    window.set_content(Some(&root));
     let view = Rc::new(View {
         picture,
         name,
@@ -386,11 +437,20 @@ fn build(app: &adw::Application) {
         save,
         reset,
         colors,
+        fastfetch,
         selected: Rc::default(),
         generation: Rc::default(),
         timer: Rc::default(),
         paths: paths.clone(),
     });
+    for button in &view.colors {
+        let weak = Rc::downgrade(&view);
+        button.connect_rgba_notify(move |_| {
+            if let Some(view) = weak.upgrade() {
+                view.fastfetch.set_palette(&view.palette());
+            }
+        });
+    }
     view.actions(false);
     let state = paths.read_state();
     let roots = Rc::new(RefCell::new(vec![paths.wallpapers.clone()]));
@@ -424,7 +484,7 @@ fn build(app: &adw::Application) {
     });
     let library = WallpaperLibrary::default();
     let selection_view = Rc::downgrade(&view);
-    library.connect_selection(&list, move |path| {
+    library.connect_activation(&list, move |path| {
         if let Some(view) = selection_view.upgrade() {
             view.select(path);
         }
@@ -491,9 +551,9 @@ fn build(app: &adw::Application) {
         let Some(path) = save_view.selected.borrow().clone() else {
             return;
         };
-        match save_palette(&save_view.paths, &path, &save_view.palette()) {
+        match save_preferences(&save_view.paths, &path, &save_view.palette(), &save_view.fastfetch.settings()) {
             Ok(()) => save_view.status.set_text(
-                "Paleta guardada para este fondo. Pulsa Aplicar para actualizar el sistema.",
+                "Paleta y fastfetch guardados para este fondo. Pulsa Aplicar para actualizar el sistema.",
             ),
             Err(error) => save_view
                 .status
@@ -541,6 +601,7 @@ fn build(app: &adw::Application) {
         let view = apply_view.clone();
         view.generation.set(view.generation.get().wrapping_add(1));
         let palette = view.palette();
+        let fastfetch = view.fastfetch.settings();
         let transition = Transition {
             effect: effects[effect.selected() as usize].into(),
             duration: duration.value(),
@@ -556,16 +617,17 @@ fn build(app: &adw::Application) {
         apply_busy.set(true);
         let busy = apply_busy.clone();
         glib::spawn_future_local(async move {
-            let result =
-                gio::spawn_blocking(move || apply_wallpaper(&paths, &image, &palette, &transition))
-                    .await;
+            let result = gio::spawn_blocking(move || {
+                apply_wallpaper(&paths, &image, &palette, &transition, Some(&fastfetch))
+            })
+            .await;
             busy.set(false);
             body.set_sensitive(true);
             header.set_sensitive(true);
             match result {
-                Ok(Ok(warnings)) if warnings.is_empty() => {
-                    view.status.set_text("Fondo y paleta aplicados al entorno.")
-                }
+                Ok(Ok(warnings)) if warnings.is_empty() => view.status.set_text(
+                    "Fondo y ajustes aplicados. Ejecuta fastfetch de nuevo para ver su configuración actual.",
+                ),
                 Ok(Ok(warnings)) => view.status.set_text(&warnings.join("\n")),
                 Ok(Err(error)) => view
                     .status
@@ -584,7 +646,7 @@ fn build(app: &adw::Application) {
             glib::Propagation::Proceed
         }
     });
-    window.present();
+    root.upcast()
 }
 
 fn load_library(view: &View, list: &gtk::ListBox, roots: Vec<PathBuf>, library: &WallpaperLibrary) {
@@ -696,6 +758,9 @@ fn load_library(view: &View, list: &gtk::ListBox, roots: Vec<PathBuf>, library: 
             if selected {
                 matched = true;
                 list.select_row(Some(&row));
+                if !had_selection {
+                    list.emit_by_name::<()>("row-activated", &[&row]);
+                }
             }
         }
         if had_selection && !matched {
@@ -748,12 +813,58 @@ fn collect_images(root: &Path, out: &mut Vec<PathBuf>, depth: usize) {
 #[cfg(test)]
 mod selection_tests {
     use super::*;
-    use std::time::Duration;
 
+    #[test]
+    #[ignore = "requires a GTK display; can run with the Broadway backend"]
+    fn thumbnail_activation_uses_parent_signal_and_preserves_paths_after_filter_and_refresh() {
+        gtk::init().expect("GTK display required for the thumbnail activation regression test");
+        let list = gtk::ListBox::new();
+        let library = WallpaperLibrary::default();
+        *library.files.borrow_mut() = vec![
+            PathBuf::from("/images/a/same.png"),
+            PathBuf::from("/images/b/same.png"),
+        ];
+        let selections = Rc::new(RefCell::new(Vec::new()));
+        let received = selections.clone();
+        library.connect_activation(&list, move |path| received.borrow_mut().push(path));
+        assert!(list.activates_on_single_click());
+        let first = gtk::ListBoxRow::new();
+        let second = gtk::ListBoxRow::new();
+        list.append(&first);
+        list.append(&second);
+        // This is the signal GTK emits for a mouse activation, unlike the
+        // row's keybinding action that originally left clicks unhandled.
+        list.emit_by_name::<()>("row-activated", &[&first]);
+        list.set_filter_func(|row| row.index() == 1);
+        list.emit_by_name::<()>("row-activated", &[&second]);
+        assert_eq!(
+            *selections.borrow(),
+            [
+                PathBuf::from("/images/a/same.png"),
+                PathBuf::from("/images/b/same.png")
+            ]
+        );
+        list.remove(&first);
+        list.remove(&second);
+        *library.files.borrow_mut() = vec![PathBuf::from("/images/new.gif")];
+        list.unset_filter_func();
+        let replacement = gtk::ListBoxRow::new();
+        list.append(&replacement);
+        // Keyboard activation also reaches the parent's row-activated signal.
+        replacement.emit_by_name::<()>("activate", &[]);
+        assert_eq!(
+            selections.borrow().last(),
+            Some(&PathBuf::from("/images/new.gif"))
+        );
+        assert_eq!(selections.borrow().len(), 3);
+    }
     #[test]
     #[ignore = "requires a GTK display"]
     fn gif_preview_changes_frames_before_applying() {
-        gtk::init().expect("GTK display required for the GIF preview regression test");
+        adw::init().expect("GTK display required for the GIF preview regression test");
+        let window = adw::ApplicationWindow::builder().build();
+        let paths = Paths::discover();
+        let fastfetch = fastfetch_ui::Editor::new(&paths, &window);
         let view = Rc::new(View {
             picture: gtk::Picture::new(),
             name: gtk::Label::new(None),
@@ -762,10 +873,11 @@ mod selection_tests {
             save: gtk::Button::new(),
             reset: gtk::Button::new(),
             colors: Vec::new(),
+            fastfetch,
             selected: Rc::default(),
             generation: Rc::default(),
             timer: Rc::default(),
-            paths: Paths::discover(),
+            paths,
         });
         let frames = Rc::new(RefCell::new(Vec::new()));
         let received = frames.clone();
@@ -792,13 +904,13 @@ mod selection_tests {
             "/tests/fixtures/preview.gif"
         )));
         let selected_view = view.clone();
-        library.connect_selection(&list, move |path| selected_view.select(path));
+        library.connect_activation(&list, move |path| selected_view.select(path));
         let body = gtk::Box::new(gtk::Orientation::Horizontal, 0);
         body.append(&list);
         body.append(&view.picture);
-        let window = gtk::Window::builder().child(&body).build();
+        window.set_content(Some(&body));
         window.present();
-        list.select_row(Some(&row));
+        list.emit_by_name::<()>("row-activated", &[&row]);
         let context = glib::MainContext::default();
         let paintable = gtk::WidgetPaintable::new(Some(&view.picture));
         let mut rendered = Vec::new();
@@ -834,47 +946,5 @@ mod selection_tests {
         );
         assert!(view.timer.borrow().is_none());
         assert_eq!(rendered.len(), 2, "GIF preview did not repaint");
-    }
-
-    #[test]
-    #[ignore = "requires a GTK display; can run with the Broadway backend"]
-    fn selection_preserves_paths_after_filter_and_refresh() {
-        gtk::init().expect("GTK display required for the thumbnail activation regression test");
-        let list = gtk::ListBox::new();
-        let library = WallpaperLibrary::default();
-        *library.files.borrow_mut() = vec![
-            PathBuf::from("/images/a/same.png"),
-            PathBuf::from("/images/b/same.png"),
-        ];
-        let selections = Rc::new(RefCell::new(Vec::new()));
-        let received = selections.clone();
-        library.connect_selection(&list, move |path| received.borrow_mut().push(path));
-        assert!(list.activates_on_single_click());
-        let first = gtk::ListBoxRow::new();
-        let second = gtk::ListBoxRow::new();
-        list.append(&first);
-        list.append(&second);
-        list.select_row(Some(&first));
-        list.set_filter_func(|row| row.index() == 1);
-        list.select_row(Some(&second));
-        assert_eq!(
-            *selections.borrow(),
-            [
-                PathBuf::from("/images/a/same.png"),
-                PathBuf::from("/images/b/same.png")
-            ]
-        );
-        list.remove(&first);
-        list.remove(&second);
-        *library.files.borrow_mut() = vec![PathBuf::from("/images/new.gif")];
-        list.unset_filter_func();
-        let replacement = gtk::ListBoxRow::new();
-        list.append(&replacement);
-        list.select_row(Some(&replacement));
-        assert_eq!(
-            selections.borrow().last(),
-            Some(&PathBuf::from("/images/new.gif"))
-        );
-        assert_eq!(selections.borrow().len(), 3);
     }
 }

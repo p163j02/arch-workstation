@@ -99,10 +99,13 @@ settings.monitor("HDMI-A-1,preferred,0x0,1")
 settings.monitor("eDP-1,1920x1080@60,1920x0,1.25")
 settings.monitor("HDMI-A-1,preferred,0x0,1,mirror,eDP-1")
 settings.monitor("eDP-1,disabled")
+settings.monitor("eDP-1,preferred,0x0,1,transform,1,mirror,HDMI-A-1")
 assert(captured[1].output == "HDMI-A-1" and captured[1].mode == "preferred")
 assert(captured[2].scale == 1.25 and captured[2].position == "1920x0")
 assert(captured[3].mirror == "eDP-1")
 assert(captured[4].disabled == true)
+assert(captured[5].disabled == false)
+assert(captured[5].transform == 1 and captured[5].mirror == "HDMI-A-1")
 '''
         subprocess.run(['lua', '-'], input=lua, text=True, capture_output=True, check=True)
 

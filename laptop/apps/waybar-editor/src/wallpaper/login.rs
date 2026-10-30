@@ -84,7 +84,8 @@ mod tests {
             style: root.join("style.css"),
             hypr: root.join("local.conf"),
             control_style: root.join("control.scss"),
-            kitty: root.join("kitty.conf"),
+            kitty: root.join("kitty/kitty.conf"),
+            fastfetch: root.join("fastfetch"),
         };
         fs::create_dir(root.join("public")).unwrap();
         symlink(root.join("public"), root.join("login-theme")).unwrap();

@@ -80,7 +80,7 @@ cd ~/arch-workstation/laptop
 bash apps/waybar-editor/install.sh
 ```
 
-Instala `~/.local/bin/waybar-editor`, `~/.local/bin/wallpaper-studio` y entradas de aplicaciones en `$XDG_DATA_HOME/applications/`. El código fuente queda en `apps/waybar-editor` dentro del repositorio. Compila con `--locked`; requiere acceso a crates.io si las dependencias no están en caché.
+Instala `~/.local/bin/waybar-editor`, `~/.local/bin/wallpaper-studio`, `~/.local/bin/pc-settings` y entradas de aplicaciones en `$XDG_DATA_HOME/applications/`. El código fuente queda en `apps/waybar-editor` dentro del repositorio. Compila con `--locked`; requiere acceso a crates.io si las dependencias no están en caché.
 
 Para validar sin abrir la interfaz:
 
@@ -95,7 +95,7 @@ Pruebas y análisis:
 cargo test --locked --manifest-path apps/waybar-editor/Cargo.toml
 cargo clippy --locked --manifest-path apps/waybar-editor/Cargo.toml --all-targets -- -D warnings
 # Regresiones de selección y vista previa animada; requieren una sesión gráfica disponible:
-cargo test --locked --manifest-path apps/waybar-editor/Cargo.toml selection_preserves_paths -- --ignored --test-threads=1
+cargo test --locked --manifest-path apps/waybar-editor/Cargo.toml thumbnail_activation -- --ignored --test-threads=1
 cargo test --locked --manifest-path apps/waybar-editor/Cargo.toml gif_preview_changes_frames_before_applying -- --ignored --test-threads=1
 ```
 
@@ -103,28 +103,10 @@ cargo test --locked --manifest-path apps/waybar-editor/Cargo.toml gif_preview_ch
 
 Elimina `~/.local/bin/wallpaper-studio`, `~/.local/bin/waybar-editor` y `$XDG_DATA_HOME/applications/waybar-editor.desktop` (por defecto `~/.local/share/applications/waybar-editor.desktop`). Elimina también `wallpaper-studio.desktop` del mismo directorio. Los bloques de colores aplicados permanecen en `waybar/style.css` y `hypr/local.conf`; puedes quitar únicamente los bloques delimitados por `wallpaper-studio:begin` y `wallpaper-studio:end` para recuperar los colores anteriores. Presets y respaldos quedan en el directorio de datos hasta que decidas borrarlos.
 
+## Configuración y Fastfetch
 
-## Llevar funcionalidades al desktop
-
-El editor permite reordenar módulos, añadir lanzadores, cambiar fuentes, colores y geometría de Waybar, guardar presets y revisar una vista previa. Su código de editor coincide con la copia de desktop en la revisión `a42e5a8`; las diferencias de implementación del notebook están en Wallpaper Studio, dentro del mismo paquete Rust.
-
-| Funcionalidad | Archivos que la implementan | Integración en desktop |
-| --- | --- | --- |
-| Edición de Waybar y presets | `src/main.rs`, `src/model.rs` y demás módulos del editor | Ya disponible en `desktop/apps/waybar-editor/`; compila su copia. |
-| Lanzador de Wallpaper Studio | `install.sh` y selección de aplicación en `src/main.rs` | El instalador crea ambos accesos; ambos usan el mismo ejecutable. |
-| Vista previa grande de GIF al seleccionar | `src/wallpaper.rs` y `tests/fixtures/preview.gif` | Traslada el cambio de selección y reloj de dibujo con su prueba. |
-| Paleta de Kitty | `src/wallpaper/theme.rs` | Bloque de colores y recarga; consulta [la guía de Kitty](../wallpaper-studio/README.md#paleta-de-la-terminal-kitty). |
-| Paleta de SDDM y Hyprlock | `src/wallpaper.rs`, `src/wallpaper/theme.rs`, `src/wallpaper/login.rs` | Requiere también scripts de preparación y configuración del tema/bloqueo. |
-
-La [guía de Wallpaper Studio](../wallpaper-studio/README.md#llevar-funcionalidades-al-desktop) detalla los archivos y la adaptación. Cambiar solo `login.rs` no basta: hacen falta la declaración del módulo, la opción `--sync-login` y la llamada desde la aplicación de paletas.
-
-Para instalar únicamente el editor que ya pertenece al desktop, ejecuta desde la raíz del repositorio:
-
-```bash
-bash desktop/apps/waybar-editor/install.sh
-waybar-editor --check
-```
-
-Esto instala los dos binarios/accesos y utiliza las configuraciones activas de ese equipo. No aplica la configuración de barra del notebook. Ambos instaladores escriben en `~/.local/bin/waybar-editor`: si instalas luego la otra copia en el mismo usuario, sustituirá el ejecutable y también cambiará la versión de Wallpaper Studio.
-
-Al trasladar cambios, conserva los archivos de Waybar, presets y ajustes locales del desktop. Compila y prueba desde `desktop/apps/waybar-editor/`, sin enlazar su código a `laptop/`. Las dependencias y comandos de Cargo son los indicados arriba, cambiando el directorio de trabajo al perfil desktop.
+`pc-settings` integra este editor, Wallpaper Studio, pantallas y ajustes de widgets.
+Consulta [Configuración del notebook](../pc-settings/README.md) y
+[Fastfetch por fondo](../wallpaper-studio/README.md#fastfetch-por-fondo).
+La implementación se tomó como referencia de `desktop/` y se adapta únicamente en `laptop/`.
+Los ajustes y colores de Fastfetch y Kitty comparten los 16 tonos ANSI por wallpaper.

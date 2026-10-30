@@ -3,6 +3,7 @@ mod glyphs;
 mod hardware;
 mod model;
 mod preview;
+mod settings;
 mod storage;
 mod ui;
 mod wallpaper;
@@ -12,10 +13,26 @@ use std::path::PathBuf;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+    match settings::cli(&args[1..]) {
+        Ok(true) => return,
+        Ok(false) => (),
+        Err(error) => {
+            eprintln!("PC Settings: {error:#}");
+            std::process::exit(1);
+        }
+    }
     let program = std::path::Path::new(&args[0])
         .file_name()
         .and_then(|name| name.to_str())
         .unwrap_or("waybar-editor");
+    if program == "pc-settings" || args.get(1).is_some_and(|a| a == "--settings") {
+        let skip = if program == "pc-settings" { 1 } else { 2 };
+        if let Err(error) = settings::run(&args[skip..]) {
+            eprintln!("PC Settings: {error:#}");
+            std::process::exit(1);
+        }
+        return;
+    }
     if program == "wallpaper-studio" || args.iter().any(|arg| arg == "--wallpapers") {
         wallpaper::run();
         return;

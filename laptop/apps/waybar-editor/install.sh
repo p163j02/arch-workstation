@@ -12,6 +12,7 @@ pkg-config --atleast-version=1.5 libadwaita-1 || { echo "Se requiere libadwaita 
 cargo build --release --locked --target-dir target
 binary="$HOME/.local/bin/waybar-editor"
 wallpaper_binary="$HOME/.local/bin/wallpaper-studio"
+settings_binary="$HOME/.local/bin/pc-settings"
 entry="${XDG_DATA_HOME:-$HOME/.local/share}/applications/waybar-editor.desktop"
 # Replace the executable atomically so an already open editor can keep running.
 mkdir -p "$(dirname "$binary")"
@@ -21,13 +22,32 @@ install -m755 target/release/waybar-editor "$binary_temp"
 mv -f -- "$binary_temp" "$binary"
 trap - EXIT
 ln -sfn waybar-editor "$wallpaper_binary"
+ln -sfn waybar-editor "$settings_binary"
+# The image profiles are included in the standalone notebook profile.
+if [ -d ../../fastfetch/images ]; then
+    image_directory="${XDG_CONFIG_HOME:-$HOME/.config}/fastfetch/images"
+    mkdir -p "$image_directory"
+    for image in ../../fastfetch/images/wallpaper-studio-*.png; do
+        [ -f "$image" ] || continue
+        install -m644 "$image" "$image_directory/$(basename "$image")"
+    done
+    for theme in bttf space nature arch; do
+        for image in "../../fastfetch/images/silphwave/$theme/"*.png; do
+            [ -f "$image" ] || continue
+            install -Dm644 "$image" "$image_directory/silphwave/$theme/$(basename "$image")"
+        done
+    done
+fi
 mkdir -p "$(dirname "$entry")"
 printf '%s\n' '[Desktop Entry]' 'Type=Application' 'Name=Waybar Editor' 'Comment=Edita tu barra, aplicaciones y presets de Waybar' "Exec=\"$binary\"" 'Icon=preferences-desktop' 'Terminal=false' 'Categories=Settings;DesktopSettings;' 'Keywords=Waybar;Hyprland;Barra;Panel;' 'StartupWMClass=io.local.WaybarEditor' > "$entry"
 chmod 644 "$entry"
 wallpaper_entry="${XDG_DATA_HOME:-$HOME/.local/share}/applications/wallpaper-studio.desktop"
 printf '%s\n' '[Desktop Entry]' 'Type=Application' 'Name=Wallpaper Studio' 'Comment=Fondos animados y paletas dinámicas para Hyprland' "Exec=\"$wallpaper_binary\"" 'Icon=preferences-desktop-wallpaper' 'Terminal=false' 'Categories=Settings;DesktopSettings;' 'Keywords=Wallpaper;Fondo;GIF;Paleta;Hyprland;' 'StartupWMClass=io.local.WallpaperStudio' > "$wallpaper_entry"
 chmod 644 "$wallpaper_entry"
-if command -v desktop-file-validate >/dev/null 2>&1; then desktop-file-validate "$entry"; desktop-file-validate "$wallpaper_entry"; fi
+settings_entry="${XDG_DATA_HOME:-$HOME/.local/share}/applications/pc-settings.desktop"
+printf '%s\n' '[Desktop Entry]' 'Type=Application' 'Name=Configuración del notebook' 'Comment=Pantallas, fondos, Waybar y widgets del escritorio' "Exec=\"$settings_binary\"" 'Icon=preferences-system' 'Terminal=false' 'Categories=Settings;DesktopSettings;' 'Keywords=Configuración;Settings;Pantallas;Monitor;Resolución;Hz;Waybar;Wallpaper;Transparencia;' 'StartupWMClass=io.local.PcSettings' > "$settings_entry"
+chmod 644 "$settings_entry"
+if command -v desktop-file-validate >/dev/null 2>&1; then desktop-file-validate "$entry"; desktop-file-validate "$wallpaper_entry"; desktop-file-validate "$settings_entry"; fi
 if command -v update-desktop-database >/dev/null 2>&1; then update-desktop-database "$(dirname "$entry")"; fi
-printf 'Instalado: %s\nInstalado: %s\nLanzadores: %s, %s\n' "$binary" "$wallpaper_binary" "$entry" "$wallpaper_entry"
-printf '%s\n' 'Cierra y vuelve a abrir Waybar Editor y Wallpaper Studio si estaban abiertos: las ventanas existentes conservan la versión anterior.'
+printf 'Instalado: %s\nInstalado: %s\nInstalado: %s\nLanzadores: %s, %s, %s\n' "$binary" "$wallpaper_binary" "$settings_binary" "$entry" "$wallpaper_entry" "$settings_entry"
+printf '%s\n' 'Cierra y vuelve a abrir Configuración, Waybar Editor y Wallpaper Studio si estaban abiertos para usar la versión nueva.'

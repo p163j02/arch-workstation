@@ -73,7 +73,7 @@ mover_a_hdmi() {
     sleep 0.3
     pkill waybar; sleep 0.2; waybar &disown
     waypaper --restore
-    eww open sysmon-widget-ext 2>/dev/null
+    pc-settings --open-sysmon sysmon-widget-ext || eww open sysmon-widget-ext 2>/dev/null
     echo "[$(date +%H:%M:%S)] finalizado" >> /tmp/monitor-handler.log
 }
 

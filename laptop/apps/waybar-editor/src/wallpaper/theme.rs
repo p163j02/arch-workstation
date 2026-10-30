@@ -3,7 +3,6 @@ use gdk_pixbuf::Pixbuf;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::env;
-use std::fmt::Write as _;
 use std::fs::{self, File, OpenOptions};
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -43,6 +42,7 @@ pub(super) struct StateFile {
     pub palettes: HashMap<String, Palette>,
     pub folders: Vec<String>,
     pub transition: Transition,
+    pub fastfetch: HashMap<String, super::fastfetch::Settings>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -80,6 +80,7 @@ pub(super) struct Paths {
     pub hypr: PathBuf,
     pub control_style: PathBuf,
     pub kitty: PathBuf,
+    pub fastfetch: PathBuf,
 }
 impl Paths {
     pub fn discover() -> Self {
@@ -99,6 +100,7 @@ impl Paths {
             hypr: config.join("hypr/local.conf"),
             control_style: config.join("eww/control-center/wallpaper-studio.scss"),
             kitty: config.join("kitty/kitty.conf"),
+            fastfetch: config.join("fastfetch"),
         }
     }
     pub fn read_state(&self) -> Result<StateFile> {
@@ -152,11 +154,18 @@ fn image_key(image: &Path) -> Result<String> {
         .context("La ruta del fondo debe ser UTF-8")
 }
 
-pub(super) fn save_palette(paths: &Paths, image: &Path, palette: &Palette) -> Result<()> {
+pub(super) fn save_preferences(
+    paths: &Paths,
+    image: &Path,
+    palette: &Palette,
+    fastfetch: &super::fastfetch::Settings,
+) -> Result<()> {
     palette.validate()?;
+    super::fastfetch::config(paths, image, palette, fastfetch)?;
     let key = image_key(image)?;
     paths.update_state(|state| {
-        state.palettes.insert(key, palette.clone());
+        state.palettes.insert(key.clone(), palette.clone());
+        state.fastfetch.insert(key, fastfetch.clone());
     })
 }
 pub(super) fn extract_palette(path: &Path) -> Result<Palette> {
@@ -188,15 +197,35 @@ pub(super) fn apply_wallpaper(
     image: &Path,
     palette: &Palette,
     transition: &Transition,
+    fastfetch: Option<&super::fastfetch::Settings>,
 ) -> Result<Vec<String>> {
-    apply_with(paths, image, palette, transition, checked_command)
+    apply_configured_with(
+        paths,
+        image,
+        palette,
+        transition,
+        fastfetch,
+        checked_command,
+    )
 }
 
+#[cfg(test)]
 fn apply_with(
     paths: &Paths,
     image: &Path,
     palette: &Palette,
     transition: &Transition,
+    command: impl Fn(&str, &[&str]) -> Result<()>,
+) -> Result<Vec<String>> {
+    apply_configured_with(paths, image, palette, transition, None, command)
+}
+
+fn apply_configured_with(
+    paths: &Paths,
+    image: &Path,
+    palette: &Palette,
+    transition: &Transition,
+    fastfetch: Option<&super::fastfetch::Settings>,
     command: impl Fn(&str, &[&str]) -> Result<()>,
 ) -> Result<Vec<String>> {
     palette.validate()?;
@@ -207,16 +236,16 @@ fn apply_with(
     }
     let _lock = paths.lock()?;
     let mut state = paths.read_state()?;
+    if let Some(settings) = fastfetch {
+        // Validate the image and text before invoking the wallpaper backend.
+        super::fastfetch::config(paths, image, palette, settings)?;
+        state.fastfetch.insert(key.clone(), settings.clone());
+    }
     // Prepare and validate every managed file before changing the wallpaper.
     let old_style = fs::read(&paths.style).context("No se pudo leer el CSS de Waybar")?;
     let css = themed_css(std::str::from_utf8(&old_style)?, palette)?;
     let old_hypr = read_optional(&paths.hypr)?;
     let old_control = read_optional(&paths.control_style)?;
-    let old_kitty = read_optional(&paths.kitty)?;
-    let kitty = old_kitty
-        .as_deref()
-        .map(|original| themed_kitty(std::str::from_utf8(original)?, palette))
-        .transpose()?;
     let control_css = control_center_css(palette)?;
     let hypr = replace_block(
         std::str::from_utf8(old_hypr.as_deref().unwrap_or_default())?,
@@ -234,7 +263,6 @@ fn apply_with(
         &paths.hypr,
         &paths.state,
         &paths.control_style,
-        &paths.kitty,
     ] {
         if fs::symlink_metadata(path).is_ok_and(|m| m.file_type().is_symlink()) {
             bail!("No se reemplazan enlaces simbólicos: {}", path.display());
@@ -244,9 +272,6 @@ fn apply_with(
     let result = (|| -> Result<()> {
         write_atomic(&paths.hypr, hypr.as_bytes())?;
         write_atomic(&paths.control_style, control_css.as_bytes())?;
-        if let Some(config) = &kitty {
-            write_atomic(&paths.kitty, config.as_bytes())?;
-        }
         command(
             "awww",
             &[
@@ -266,19 +291,15 @@ fn apply_with(
         let css_rollback = write_atomic(&paths.style, &old_style);
         let hypr_rollback = restore_optional(&paths.hypr, old_hypr.as_deref());
         let control_rollback = restore_optional(&paths.control_style, old_control.as_deref());
-        let kitty_rollback = restore_optional(&paths.kitty, old_kitty.as_deref());
         css_rollback.context(format!("{error:#}; además no se pudo restaurar el CSS"))?;
         hypr_rollback.context(format!("{error:#}; además no se pudo restaurar local.conf"))?;
         control_rollback.context(format!(
             "{error:#}; además no se pudo restaurar el tema de Eww"
         ))?;
-        kitty_rollback.context(format!(
-            "{error:#}; además no se pudo restaurar el tema de Kitty"
-        ))?;
         return Err(error);
     }
     state.current = Some(key.clone());
-    state.palettes.insert(key, palette.clone());
+    state.palettes.insert(key.clone(), palette.clone());
     state.transition = transition.clone();
     let mut warnings = Vec::new();
     if let Err(error) = write_atomic(&paths.state, &serde_json::to_vec_pretty(&state)?) {
@@ -286,13 +307,14 @@ fn apply_with(
             "Fondo aplicado, pero no se pudo guardar la restauración: {error:#}"
         ));
     }
-    let lua = format!(
-        "hl.config({{ general = {{ col = {{ active_border = {{ colors = {{ \"rgba({}ee)\", \"rgba({}ee)\" }}, angle = 45 }}, inactive_border = \"rgba({}aa)\" }} }} }})",
+    // Hyprland 0.57 uses Lua; the old `keyword` IPC request is no longer accepted.
+    let border_config = format!(
+        "hl.config({{general={{col={{active_border={{colors={{\"rgba({}ee)\",\"rgba({}ee)\"}},angle=45}},inactive_border=\"rgba({}aa)\"}}}}}})",
         &palette.accent[1..],
         &palette.secondary[1..],
         &palette.background[1..]
     );
-    if let Err(error) = command("hyprctl", &["eval", &lua]) {
+    if let Err(error) = command("hyprctl", &["eval", &border_config]) {
         warnings.push(format!(
             "Bordes guardados en local.conf; no se pudieron actualizar en vivo: {error:#}"
         ));
@@ -300,13 +322,6 @@ fn apply_with(
     if let Err(error) = command("pkill", &["-SIGUSR2", "-x", "waybar"]) {
         warnings.push(format!(
             "No se pudo solicitar la recarga de Waybar: {error:#}"
-        ));
-    }
-    if kitty.is_some()
-        && let Err(error) = command("pkill", &["-SIGUSR1", "-x", "kitty"])
-    {
-        warnings.push(format!(
-            "Paleta guardada; no se pudo solicitar la recarga de Kitty: {error:#}"
         ));
     }
     if paths.control_style.with_file_name("eww.yuck").is_file() {
@@ -324,66 +339,19 @@ fn apply_with(
             "Fondo aplicado; no se pudo sincronizar SDDM/Hyprlock: {error:#}"
         ));
     }
-    Ok(warnings)
-}
-
-fn mix(first: &str, second: &str, amount: f64) -> String {
-    let channel = |color: &str, start| u8::from_str_radix(&color[start..start + 2], 16).unwrap();
-    let [red, green, blue] = [1, 3, 5].map(|i| {
-        (f64::from(channel(first, i)) * (1.0 - amount) + f64::from(channel(second, i)) * amount)
-            .round() as u8
-    });
-    format!("#{red:02x}{green:02x}{blue:02x}")
-}
-
-fn themed_kitty(original: &str, palette: &Palette) -> Result<String> {
-    palette.validate()?;
-    let Palette {
-        accent,
-        secondary,
-        background,
-        foreground,
-    } = palette;
-    let surface = mix(background, foreground, 0.08);
-    let muted = mix(background, foreground, 0.72);
-    let on_accent = contrasting_text(accent);
-    let mut colors = format!(
-        "# Generated by Wallpaper Studio.\n\
-foreground {foreground}\nbackground {background}\n\
-cursor {accent}\ncursor_text_color {on_accent}\n\
-selection_background {accent}\nselection_foreground {on_accent}\n\
-url_color {secondary}\nactive_border_color {accent}\ninactive_border_color {surface}\n\
-active_tab_background {accent}\nactive_tab_foreground {on_accent}\n\
-inactive_tab_background {surface}\ninactive_tab_foreground {muted}\n\
-tab_bar_background {background}\n"
-    );
-    // Keep red/green/yellow recognizable for errors, success and warnings,
-    // while tinting them towards the wallpaper's two accents.
-    let ansi = [
-        background.clone(),
-        mix("#e06c75", secondary, 0.16),
-        mix("#69b884", accent, 0.12),
-        mix("#e0bd68", secondary, 0.12),
-        accent.clone(),
-        secondary.clone(),
-        mix(accent, secondary, 0.5),
-        mix(foreground, background, 0.12),
-    ];
-    for (index, color) in ansi.iter().enumerate() {
-        writeln!(colors, "color{index} {color}")?;
-        let bright = if index == 7 {
-            foreground.clone()
-        } else {
-            mix(color, foreground, 0.25)
-        };
-        writeln!(colors, "color{} {bright}", index + 8)?;
+    if let Err(error) = super::terminal::sync(paths, palette, &command) {
+        warnings.push(format!(
+            "Fondo aplicado; no se pudo sincronizar Kitty: {error:#}"
+        ));
     }
-    replace_block(
-        original,
-        "# wallpaper-studio:begin",
-        "# wallpaper-studio:end",
-        &colors,
-    )
+    if let Some(settings) = state.fastfetch.get(&key)
+        && let Err(error) = super::fastfetch::sync_settings(paths, image, palette, settings)
+    {
+        warnings.push(format!(
+            "Fondo aplicado; no se pudo sincronizar fastfetch: {error:#}"
+        ));
+    }
+    Ok(warnings)
 }
 
 fn read_optional(path: &Path) -> Result<Option<Vec<u8>>> {
@@ -405,7 +373,7 @@ fn restore_optional(path: &Path, data: Option<&[u8]>) -> Result<()> {
     }
 }
 
-fn checked_command(program: &str, args: &[&str]) -> Result<()> {
+pub(super) fn checked_command(program: &str, args: &[&str]) -> Result<()> {
     let output = Command::new(program)
         .args(args)
         .output()
@@ -429,7 +397,7 @@ fn checked_command(program: &str, args: &[&str]) -> Result<()> {
     Ok(())
 }
 
-fn replace_block(text: &str, start: &str, end: &str, content: &str) -> Result<String> {
+pub(super) fn replace_block(text: &str, start: &str, end: &str, content: &str) -> Result<String> {
     let mut output = text.to_owned();
     loop {
         match (output.find(start), output.find(end)) {
@@ -460,7 +428,7 @@ pub(super) fn themed_css(css: &str, palette: &Palette) -> Result<String> {
     // selectors. A lower-priority color on a parent cannot override a label's
     // own color, and the old active rule lost to the editor's workspace rule.
     let scope = "window#waybar#waybar#waybar";
-    replace_block(
+    let css = replace_block(
         css,
         "/* wallpaper-studio:begin */",
         "/* wallpaper-studio:end */",
@@ -515,7 +483,8 @@ pub(super) fn themed_css(css: &str, palette: &Palette) -> Result<String> {
 {scope} #custom-power:hover {{ color: {accent}; }}"#,
             colors = serde_json::to_string(palette)?,
         ),
-    )
+    )?;
+    crate::settings::widgets::rebase_bar(&css)
 }
 
 pub(super) fn control_center_css(palette: &Palette) -> Result<String> {
@@ -541,7 +510,7 @@ pub(super) fn control_center_css(palette: &Palette) -> Result<String> {
     let card = mix(0.08);
     let track = mix(0.18);
     let on_accent = contrasting_text(accent);
-    Ok(format!(
+    let css = format!(
         r#"/* Generated by Wallpaper Studio; imported by Eww and the native Wi-Fi panel. */
 .cc-panel.cc-panel {{ background: {background}; color: {foreground}; border-color: {accent}; }}
 .cc-panel.cc-panel label, .cc-panel.cc-panel button {{ color: {foreground}; }}
@@ -577,7 +546,8 @@ pub(super) fn control_center_css(palette: &Palette) -> Result<String> {
 .cc-panel.cc-panel .cc-disconnect, .cc-panel.cc-panel .cc-danger,
 .cc-panel.cc-panel .cc-danger .cc-row-icon {{ color: #f7768e; }}
 "#
-    ))
+    );
+    crate::settings::widgets::rebase_panels(&css, &palette.background)
 }
 
 pub(super) fn contrasting_text(color: &str) -> &'static str {
@@ -656,6 +626,7 @@ mod tests {
             hypr: dir.path().join("hypr/local.conf"),
             control_style: dir.path().join("eww/control-center/wallpaper-studio.scss"),
             kitty: dir.path().join("kitty/kitty.conf"),
+            fastfetch: dir.path().join("fastfetch"),
         };
         fs::create_dir_all(paths.style.parent().unwrap()).unwrap();
         fs::write(
@@ -785,7 +756,6 @@ mod tests {
         })
         .unwrap();
         assert!(warnings.is_empty());
-        assert!(!paths.kitty.exists());
         let calls = calls.borrow();
         assert_eq!(
             calls.iter().map(|c| c.0.as_str()).collect::<Vec<_>>(),
@@ -796,9 +766,13 @@ mod tests {
             ["--transition-type", "wave", "--transition-duration", "1.5"]
         );
         assert_eq!(calls[0].1.last().unwrap(), image.to_str().unwrap());
-        assert_eq!(calls[1].1[0], "eval");
-        assert!(calls[1].1[1].contains("hl.config("));
-        assert!(calls[1].1[1].contains("rgba(65d9ffee)"));
+        assert_eq!(
+            calls[1].1,
+            [
+                "eval",
+                "hl.config({general={col={active_border={colors={\"rgba(65d9ffee)\",\"rgba(bb9af7ee)\"},angle=45},inactive_border=\"rgba(10131daa)\"}}})"
+            ]
+        );
         let state = paths.read_state().unwrap();
         assert_eq!(state.current.as_deref(), image.to_str());
         assert_eq!(state.transition.effect, "wave");
@@ -806,117 +780,6 @@ mod tests {
         assert!(hypr.contains("input:kb_layout = latam"));
         assert!(hypr.contains("general:col.active_border = rgba(65d9ffee) rgba(bb9af7ee) 45deg"));
         assert_eq!(palette_for(&paths, &image).unwrap(), palette);
-    }
-
-    #[test]
-    fn kitty_palette_preserves_settings_and_replaces_only_the_managed_block() {
-        let (_dir, _paths, _image, palette) = fixture();
-        let original = "font_size 10.5\nbackground_opacity 0.82\nmap ctrl+c copy_to_clipboard\n";
-        let first = themed_kitty(original, &palette).unwrap();
-        let mut changed = palette.clone();
-        changed.accent = "#ffcc00".into();
-        let updated = themed_kitty(&first, &changed).unwrap();
-        assert!(updated.starts_with(original));
-        assert_eq!(updated.matches("# wallpaper-studio:begin").count(), 1);
-        assert!(updated.contains("cursor #ffcc00\n"));
-        assert!(!updated.contains("#65d9ff"));
-        assert!(updated.contains("background #10131d\n"));
-        assert!(updated.contains("foreground #f2f4ff\n"));
-        assert!(updated.contains("color8 #494b56\n"));
-        assert!(updated.contains("color1 #da738a\n"));
-        assert!(updated.contains("color2 #7bba74\n"));
-        assert!(updated.contains("color4 #ffcc00\n"));
-        assert!(updated.contains("color5 #bb9af7\n"));
-        assert!(themed_kitty("# wallpaper-studio:begin\n", &palette).is_err());
-    }
-
-    #[test]
-    fn paisaje_ansi_palette_matches_desktop_reference() {
-        let palette = Palette {
-            accent: "#cc6a67".into(),
-            secondary: "#827cb1".into(),
-            background: "#1e1419".into(),
-            foreground: "#f4ebf0".into(),
-        };
-        let config = themed_kitty("font_size 10.5\nbackground_opacity 0.82\n", &palette).unwrap();
-        let expected = [
-            "#1e1419", "#d16f7f", "#75af81", "#d5b571", "#cc6a67", "#827cb1", "#a7738c", "#dad1d6",
-            "#544a4f", "#da8e9b", "#95be9d", "#ddc391", "#d68a89", "#9f98c1", "#ba91a5", "#f4ebf0",
-        ];
-        for (index, color) in expected.iter().enumerate() {
-            assert!(
-                config
-                    .lines()
-                    .any(|line| line == format!("color{index} {color}"))
-            );
-        }
-    }
-
-    #[test]
-    fn all_ansi_colors_follow_the_selected_palette() {
-        let (_dir, _paths, _image, cool) = fixture();
-        let warm = Palette {
-            accent: "#ffa53b".into(),
-            secondary: "#7eba66".into(),
-            background: "#1f160c".into(),
-            foreground: "#fff2dd".into(),
-        };
-        let colors = |palette: &Palette| {
-            themed_kitty("", palette)
-                .unwrap()
-                .lines()
-                .filter(|line| line.starts_with("color"))
-                .map(str::to_owned)
-                .collect::<Vec<_>>()
-        };
-        let first = colors(&cool);
-        let second = colors(&warm);
-        assert_eq!(first.len(), 16);
-        assert_eq!(second.len(), 16);
-        for (old, new) in first.iter().zip(second) {
-            assert_ne!(old, &new, "El tono debe adaptarse a la nueva paleta");
-        }
-        assert_eq!(first, colors(&cool));
-    }
-
-    #[test]
-    fn kitty_is_reloaded_after_apply_and_reload_failure_is_reported() {
-        for reload_fails in [false, true] {
-            let (_dir, paths, image, palette) = fixture();
-            fs::create_dir_all(paths.kitty.parent().unwrap()).unwrap();
-            fs::write(&paths.kitty, "font_size 10.5\n").unwrap();
-            let reloaded = std::cell::Cell::new(false);
-            let warnings = apply_with(
-                &paths,
-                &image,
-                &palette,
-                &Transition::default(),
-                |program, args| {
-                    if program == "pkill" && args == ["-SIGUSR1", "-x", "kitty"] {
-                        assert!(
-                            fs::read_to_string(&paths.kitty)
-                                .unwrap()
-                                .contains("cursor #65d9ff")
-                        );
-                        reloaded.set(true);
-                        if reload_fails {
-                            bail!("reload failed");
-                        }
-                    }
-                    Ok(())
-                },
-            )
-            .unwrap();
-            assert!(reloaded.get());
-            assert_eq!(warnings.len(), usize::from(reload_fails));
-            if reload_fails {
-                assert!(warnings[0].contains("recarga de Kitty"));
-            }
-            assert_eq!(
-                paths.read_state().unwrap().current.as_deref(),
-                image.to_str()
-            );
-        }
     }
 
     #[test]
@@ -928,8 +791,6 @@ mod tests {
                 fs::write(&paths.hypr, "# original hypr\n").unwrap();
                 fs::create_dir_all(paths.control_style.parent().unwrap()).unwrap();
                 fs::write(&paths.control_style, "/* original panel theme */\n").unwrap();
-                fs::create_dir_all(paths.kitty.parent().unwrap()).unwrap();
-                fs::write(&paths.kitty, "# original kitty\n").unwrap();
             }
             let original = fs::read(&paths.style).unwrap();
             let result = apply_with(
@@ -946,12 +807,7 @@ mod tests {
             assert_eq!(fs::read(&paths.style).unwrap(), original);
             assert_eq!(paths.hypr.exists(), existing_hypr);
             assert_eq!(paths.control_style.exists(), existing_hypr);
-            assert_eq!(paths.kitty.exists(), existing_hypr);
             if existing_hypr {
-                assert_eq!(
-                    fs::read_to_string(&paths.kitty).unwrap(),
-                    "# original kitty\n"
-                );
                 assert_eq!(
                     fs::read_to_string(&paths.control_style).unwrap(),
                     "/* original panel theme */\n"
@@ -985,6 +841,67 @@ mod tests {
         fs::write(&paths.state, "invalid").unwrap();
         assert!(paths.update_state(|s| s.current = None).is_err());
         assert_eq!(fs::read_to_string(&paths.state).unwrap(), "invalid");
+    }
+
+    #[test]
+    fn fastfetch_changes_only_after_backend_success_and_settings_survive_restore() {
+        let (_dir, paths, image, palette) = fixture();
+        fs::create_dir_all(paths.fastfetch.join("images")).unwrap();
+        fs::write(
+            paths.fastfetch.join("images/wallpaper-studio-nature.png"),
+            b"image",
+        )
+        .unwrap();
+        let destination = paths.fastfetch.join("config.jsonc");
+        fs::write(&destination, "original").unwrap();
+        let settings = super::super::fastfetch::Settings {
+            profile: "nature".into(),
+            heading: "MY LANDSCAPE".into(),
+            ..Default::default()
+        };
+        assert!(
+            apply_configured_with(
+                &paths,
+                &image,
+                &palette,
+                &Transition::default(),
+                Some(&settings),
+                |program, _| {
+                    assert_eq!(program, "awww");
+                    bail!("backend failed");
+                }
+            )
+            .is_err()
+        );
+        assert_eq!(fs::read_to_string(&destination).unwrap(), "original");
+        assert!(paths.read_state().unwrap().fastfetch.is_empty());
+        assert!(
+            apply_configured_with(
+                &paths,
+                &image,
+                &palette,
+                &Transition::default(),
+                Some(&settings),
+                |_, _| Ok(())
+            )
+            .unwrap()
+            .is_empty()
+        );
+        let configured = fs::read_to_string(&destination).unwrap();
+        assert!(configured.contains("MY LANDSCAPE"));
+        assert_eq!(
+            paths.read_state().unwrap().fastfetch[image.to_str().unwrap()],
+            settings
+        );
+        // Restoring through the CLI passes no draft and must reuse the saved settings.
+        assert!(
+            apply_with(&paths, &image, &palette, &Transition::default(), |_, _| Ok(
+                ()
+            ))
+            .unwrap()
+            .is_empty()
+        );
+        assert_eq!(fs::read_to_string(destination).unwrap(), configured);
     }
 
     #[test]
@@ -1066,6 +983,49 @@ mod tests {
         assert_eq!(warnings.len(), 1);
         assert!(warnings[0].contains("paneles de Eww"));
         assert!(paths.read_state().unwrap().current.is_some());
+    }
+
+    #[test]
+    fn terminal_theme_updates_only_after_successful_wallpaper_and_reports_reload_failure() {
+        let (_dir, paths, image, palette) = fixture();
+        fs::create_dir_all(paths.kitty.parent().unwrap()).unwrap();
+        let original = "font_size 10.5\nbackground_opacity 0.82\n";
+        fs::write(&paths.kitty, original).unwrap();
+        assert!(
+            apply_with(
+                &paths,
+                &image,
+                &palette,
+                &Transition::default(),
+                |program, _| {
+                    assert_eq!(program, "awww");
+                    bail!("daemon unavailable");
+                }
+            )
+            .is_err()
+        );
+        assert_eq!(fs::read_to_string(&paths.kitty).unwrap(), original);
+        let warnings = apply_with(
+            &paths,
+            &image,
+            &palette,
+            &Transition::default(),
+            |program, args| {
+                if program == "pkill" && args.contains(&"kitty") {
+                    assert!(
+                        fs::read_to_string(&paths.kitty)
+                            .unwrap()
+                            .contains("background #10131d")
+                    );
+                    bail!("reload unavailable");
+                }
+                Ok(())
+            },
+        )
+        .unwrap();
+        assert!(paths.read_state().unwrap().current.is_some());
+        assert_eq!(warnings.len(), 1);
+        assert!(warnings[0].contains("Kitty"));
     }
 
     #[test]

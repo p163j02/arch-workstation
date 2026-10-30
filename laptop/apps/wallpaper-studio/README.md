@@ -48,6 +48,8 @@ wallpaper-studio --help
 wallpaper-studio --apply /ruta/al/fondo.gif
 wallpaper-studio --restore
 wallpaper-studio --sync-login
+wallpaper-studio --sync-terminal
+wallpaper-studio --sync-fastfetch
 ```
 
 ## Inicio de sesión y bloqueo
@@ -64,46 +66,48 @@ SDDM recibe únicamente una copia PNG y los colores en `/var/lib/wallpaper-studi
 
 ## Código y dependencias
 
-Comparte el binario con Waybar Editor: el instalador coloca `~/.local/bin/waybar-editor` y el enlace `~/.local/bin/wallpaper-studio`, además de dos entradas independientes de aplicaciones. El código del gestor está en `../waybar-editor/src/wallpaper.rs` y `../waybar-editor/src/wallpaper/`. No se distribuyen binarios del desktop: cada equipo compila su copia.
+Comparte el binario con Waybar Editor: el instalador coloca `~/.local/bin/waybar-editor` y el enlace `~/.local/bin/wallpaper-studio`, además del enlace `~/.local/bin/pc-settings` y tres entradas independientes de aplicaciones. El código del gestor está en `../waybar-editor/src/wallpaper.rs` y `../waybar-editor/src/wallpaper/`. No se distribuyen binarios del desktop: cada equipo compila su copia.
 
 Requiere Rust ≥ 1.89, GTK4 ≥ 4.10 y libadwaita ≥ 1.5. Aplicar fondos requiere `awww-daemon` activo. Esta versión usa la misma imagen en todos los monitores y admite GIF, pero no reproducción de vídeo.
 
 La [documentación del paquete compartido](../waybar-editor/README.md) detalla los archivos de estado, los bloques de colores y la recuperación ante errores.
 
 
-## Llevar funcionalidades al desktop
+## Configuración integrada
 
-Wallpaper Studio ya existe en ambos perfiles. Esta guía describe las funciones de la copia actual del notebook; revisa las diferencias de tu checkout antes de incorporar cambios. Los archivos de destino deben quedar en `desktop/`, manteniendo ambos perfiles independientes.
+Abre `pc-settings` o **Configuración del notebook** desde Rofi para usar Wallpaper Studio,
+Waybar Editor, pantallas y ajustes de widgets en una sola ventana. Los accesos independientes
+siguen disponibles. Consulta [la guía de Configuración](../pc-settings/README.md).
 
-| Funcionalidad | Código del notebook | Configuración que necesita en desktop |
-| --- | --- | --- |
-| Fondos estáticos/GIF, carpetas, paletas y transiciones | `../waybar-editor/src/wallpaper.rs`, `src/wallpaper/palette.rs`, `src/wallpaper/theme.rs` | `awww-daemon` y el estado propio del usuario; esta base ya existe en desktop. |
-| Movimiento en la vista previa grande, antes de aplicar | `../waybar-editor/src/wallpaper.rs` | Cambio de selección a `row-selected`, reloj GTK y fixture `tests/fixtures/preview.gif`. |
-| Colores de Waybar y bordes de Hyprland | `../waybar-editor/src/wallpaper/theme.rs` | Bloques administrados en `~/.config/waybar/style.css` y `~/.config/hypr/local.conf`; el Lua de Hyprland debe leer este último. |
-| Monitor de recursos y paneles de brillo, audio, Wi-Fi y demás | `theme.rs`, `../../eww/control-center/wallpaper-studio.scss`, scripts de Wi-Fi y sysmon | Importación del SCSS del centro de control y lectores de paleta de los widgets. Esa integración base ya está en desktop; conserva sus widgets y dispositivos. |
-| Colores de la terminal Kitty | `../waybar-editor/src/wallpaper/theme.rs` | Bloque administrado en `~/.config/kitty/kitty.conf` y recarga con `SIGUSR1`. |
-| Fondo y colores de SDDM/Pixie y Hyprlock | `../waybar-editor/src/wallpaper/login.rs`, llamadas en `wallpaper.rs` y `theme.rs`, `setup-login-theme.sh`, `sddm_theme.py` | Pixie instalado y seleccionado, plantilla de Hyprlock con variables y directorio público por usuario. |
+## Fastfetch por fondo
 
-Para incorporar la versión completa de Wallpaper Studio del notebook, los archivos de código que difieren actualmente son `wallpaper.rs`, `wallpaper/theme.rs` y el nuevo `wallpaper/login.rs`; añade también el fixture de GIF para poder ejecutar sus pruebas. No hace falta copiar todo Waybar Editor ni sus configuraciones de escritorio.
+En **Personalizar fastfetch**, elige **Automático**, **Volver al futuro**, **Espacio**,
+**Naturaleza**, **Arch / neutro** o **No cambiar fastfetch**. Puedes personalizar imagen,
+ancho, título, frase final y etiquetas de memoria/disco. Los tres selectores de color
+muestran los mismos 16 colores ANSI que Kitty.
 
-Si solo quieres la animación de GIF, adapta los cambios de selección, `TickCallbackId`, cancelación del callback y prueba de animación de `wallpaper.rs`; ese archivo también contiene los cambios de inicio/bloqueo, por lo que copiarlo entero exige incorporar `login.rs` y su integración en `theme.rs`.
+**Biblioteca…** ofrece cuatro imágenes originales y 19 variantes Silphwave, agrupadas por
+tema. **Otra imagen…** permite seleccionar un archivo propio. Las imágenes se incluyen en
+`laptop/fastfetch/images/` y el instalador de la app las copia a `~/.config/fastfetch/images/`.
 
-Para **paleta y fondo de SDDM/Hyprlock**, sigue [el procedimiento de traslado al desktop](README-SDDM-HYPRLOCK.md#incorporar-esta-funcionalidad-al-desktop). Incluye las rutas exactas, la plantilla de bloqueo, compilación, activación, comprobaciones y recuperación.
+**Guardar ajustes del fondo** conserva el borrador por wallpaper. **Aplicar fondo y paleta**
+guarda y actualiza Fastfetch; el resultado se ve al ejecutarlo de nuevo. El primer cambio
+respalda la configuración anterior junto al estado de Wallpaper Studio, en
+`fastfetch-backup/config.jsonc`. Si el fondo no tiene ajustes guardados, `--restore` conserva
+Fastfetch como está. Los ajustes anteriores de paletas y fondos siguen siendo compatibles.
 
-Mantén las imágenes, carpetas, paletas y monitores del desktop. No copies `laptop/state/`, `laptop/waybar/` ni todo `laptop/hypr/` para habilitar una función. Ambos perfiles usan el estado del usuario que ejecuta la app, no una carpeta de estado compartida dentro del repositorio.
-
+La referencia de implementación es `desktop/`; todos los cambios y recursos del notebook
+se mantienen dentro de `laptop/`, sin dependencias de ejecución entre perfiles.
 
 ## Paleta de la terminal Kitty
 
-El patrón se calcula para **todos los fondos**, a partir de su paleta actual; no contiene una excepción ni colores fijos para `paisaje.jpg`. **Aplicar fondo y paleta**, `--apply` y `--restore` también actualizan Kitty cuando existe `~/.config/kitty/kitty.conf` (o su equivalente bajo `XDG_CONFIG_HOME`). **Guardar paleta** solo guarda el borrador; `--sync-login` sigue limitado a SDDM/Hyprlock.
+El patrón se calcula para **todos los fondos**, a partir de su paleta actual; no contiene una excepción ni colores fijos para `paisaje.jpg`. **Aplicar fondo y paleta**, `--apply` y `--restore` también actualizan Kitty cuando existe `~/.config/kitty/kitty.conf` (o su equivalente bajo `XDG_CONFIG_HOME`). **Guardar ajustes del fondo** solo guarda el borrador; `--sync-login` sigue limitado a SDDM/Hyprlock.
 
 La app administra un bloque `# wallpaper-studio:begin` / `# wallpaper-studio:end` al final de `kitty.conf`: fondo, texto, cursor, selección, pestañas, bordes y los 16 colores ANSI. Usa el mismo cálculo de tonos de la copia desktop: los dos acentos generan azul y magenta; el cian mezcla ambos. Rojo, verde y amarillo se tiñen suavemente conservando su significado. Los ocho colores claros se obtienen mezclando los tonos normales con el texto, para evitar repeticiones. El gris de comentarios y las superficies se derivan del fondo y el texto. Las fuentes, transparencia, atajos y demás ajustes quedan fuera del bloque y se conservan.
 
-La configuración se guarda para nuevas ventanas y se solicita la recarga de las abiertas mediante `SIGUSR1`, según la [documentación de Kitty](https://sw.kovidgoyal.net/kitty/conf/). El cursor y la selección calculan texto blanco o negro según el contraste del acento. No necesita habilitar control remoto. Si Kitty no está abierto, el cambio queda preparado; si falta su configuración, no se crea una nueva. Un fallo al aplicar el fondo restaura el archivo anterior. Si falla únicamente la recarga, se muestra una advertencia y los colores quedan guardados.
-
-Para incorporar esta función al desktop, adapta `Paths.kitty`, `themed_kitty` y la preparación, escritura, reversión y recarga de `apply_with` en `../waybar-editor/src/wallpaper/theme.rs`. Añade el campo `kitty` a los fixtures que construyen `Paths`, incluido el de `wallpaper/login.rs`, y traslada las pruebas de tema/recarga/reversión. Si ya incorporaste la integración SDDM, no necesitas volver a preparar Pixie. Recompila e instala desde `desktop/apps/`, conservando su propio `kitty.conf`; el bloque se genera al aplicar su paleta.
+La configuración se guarda para nuevas ventanas y se solicita la recarga de las abiertas mediante `SIGUSR1`, según la [documentación de Kitty](https://sw.kovidgoyal.net/kitty/conf/). El cursor y la selección calculan texto blanco o negro según el contraste del acento. No necesita habilitar control remoto. Si Kitty no está abierto, el cambio queda preparado; si falta su configuración, no se crea una nueva. Kitty se sincroniza después de aplicar correctamente el fondo; si falla el backend del fondo, su archivo queda intacto. Si falla únicamente la recarga, se muestra una advertencia y los colores quedan guardados.
 
 Para recuperar los colores anteriores, retira solo el bloque administrado y recarga Kitty. Las aplicaciones que definen su propio tema con colores RGB, como algunos editores, pueden conservar esos colores propios.
 
 
-La regresión `paisaje_ansi_palette_matches_desktop_reference` verifica los 16 tonos para la paleta de `paisaje.jpg` usada en la comparación. La lógica de `mix` y `themed_kitty` corresponde a `mix` y `themed_config` en `desktop/apps/waybar-editor/src/wallpaper/terminal.rs` de la revisión `f74e33f`; cada perfil conserva su propia implementación. El notebook mantiene su preparación y reversión del archivo dentro de la aplicación del fondo.
+La regresión `paisaje_ansi_palette_matches_desktop_reference` verifica los 16 tonos para la paleta de `paisaje.jpg` usada en la comparación. El cálculo compartido por Kitty y los selectores de Fastfetch está en `../waybar-editor/src/wallpaper/terminal.rs`. Cada perfil conserva su propia copia.

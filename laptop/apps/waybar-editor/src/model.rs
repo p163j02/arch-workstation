@@ -380,6 +380,7 @@ impl Document {
             self.css.push_str(&block);
             self.css.push('\n');
         }
+        self.css = crate::settings::widgets::rebase_bar(&self.css)?;
         Ok(())
     }
 
@@ -654,7 +655,7 @@ fn extract_first_color_token(value: &str) -> Option<String> {
     }
 }
 
-fn parse_rgba_components(color: &str) -> Option<(u8, u8, u8, f64)> {
+pub(crate) fn parse_rgba_components(color: &str) -> Option<(u8, u8, u8, f64)> {
     let c = color.trim();
     if let Some(hex) = c.strip_prefix('#') {
         return match hex.len() {

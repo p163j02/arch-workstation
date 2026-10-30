@@ -1,14 +1,14 @@
-# Apps del notebook y funciones para incorporar al desktop
+# Aplicaciones del notebook
 
-Cada paquete tiene su README con funciones, archivos implicados, dependencias y pasos para trasladarlas a una copia independiente en `desktop/`.
+Todas las implementaciones, instaladores, recursos y pruebas de este equipo viven en `laptop/`.
+`desktop/` se utiliza únicamente como referencia de lectura al incorporar funcionalidades.
 
-| Paquete | Qué documenta | Guía |
+| Aplicación | Funciones | Guía |
 | --- | --- | --- |
-| Waybar Editor | Editor de barra, lanzadores, presets y relación del binario con Wallpaper Studio. | [README](waybar-editor/README.md#llevar-funcionalidades-al-desktop) |
-| Wallpaper Studio | Fondos, paletas, vista previa grande animada de GIF y colores de Waybar/Eww/Kitty. | [README](wallpaper-studio/README.md#llevar-funcionalidades-al-desktop) |
-| Wallpaper Studio: SDDM/Hyprlock | Fondo y paleta al iniciar sesión y al bloquear, archivos a incorporar y recuperación. | [Procedimiento para desktop](wallpaper-studio/README-SDDM-HYPRLOCK.md#incorporar-esta-funcionalidad-al-desktop) |
+| Configuración del notebook | Pantallas, Wallpaper Studio, Waybar Editor, transparencia y widgets. | [README](pc-settings/README.md) |
+| Wallpaper Studio | Fondos estáticos/GIF, paletas, Kitty y Fastfetch por fondo con biblioteca de imágenes. | [README](wallpaper-studio/README.md) |
+| Waybar Editor | Barra, lanzadores, apariencia y presets. | [README](waybar-editor/README.md) |
+| SDDM/Hyprlock | Integración del fondo y la paleta con inicio de sesión y bloqueo. | [Guía](wallpaper-studio/README-SDDM-HYPRLOCK.md) |
 | Craft | Restauración verificada de ArtCraft Launcher, GridCraft, PdfCraft y WordCraft. | [README](craft/README.md) |
 
-Las referencias describen las funciones de la copia actual del notebook. Incorporar una función significa adaptar su código y configuración en `desktop/`, conservando los monitores, preferencias y datos de ese equipo. Las guías no crean dependencias entre perfiles ni ejecutan automáticamente las migraciones.
-
-SDDM, Hyprlock y los widgets Eww son integraciones del entorno; sus archivos están en `../sddm/`, `../hypr/` y `../eww/`. El procedimiento de Wallpaper Studio explica cómo se conectan con la aplicación.
+Cada aplicación se compila e instala desde su copia del notebook, sin cargar código o datos de `desktop/`.

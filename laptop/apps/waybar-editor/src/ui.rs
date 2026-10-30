@@ -67,7 +67,17 @@ pub fn build(application: &adw::Application, paths: Paths) {
         .default_width(1180)
         .default_height(800)
         .build();
-    window.set_size_request(960, 640);
+    let content = build_page(application, &window, paths);
+    window.set_content(Some(&content));
+    window.present();
+}
+
+pub(crate) fn build_page(
+    application: &adw::Application,
+    window: &adw::ApplicationWindow,
+    paths: Paths,
+) -> gtk::Widget {
+    let window = window.clone();
     let document = match paths.load() {
         Ok(document) => document,
         Err(error) => {
@@ -83,9 +93,7 @@ pub fn build(application: &adw::Application, paths: Paths) {
                 .vexpand(true)
                 .build();
             layout.append(&page);
-            window.set_content(Some(&layout));
-            window.present();
-            return;
+            return layout.upcast();
         }
     };
 
@@ -105,6 +113,10 @@ pub fn build(application: &adw::Application, paths: Paths) {
 
     let layout = gtk::Box::new(gtk::Orientation::Vertical, 0);
     let header = adw::HeaderBar::new();
+    if application.application_id().as_deref() == Some("io.local.PcSettings") {
+        header.set_show_start_title_buttons(false);
+        header.set_show_end_title_buttons(false);
+    }
     let title = adw::WindowTitle::new("Waybar Editor", "Configuración actual");
     header.set_title_widget(Some(&title));
     let reload = icon_button("view-refresh-symbolic", "Recargar archivos del disco");
@@ -493,7 +505,7 @@ pub fn build(application: &adw::Application, paths: Paths) {
     layout.append(&footer);
     let toast = adw::ToastOverlay::new();
     toast.set_child(Some(&layout));
-    window.set_content(Some(&toast));
+    let content = toast.clone().upcast();
 
     let ui = Rc::new(Ui {
         window,
@@ -684,7 +696,7 @@ pub fn build(application: &adw::Application, paths: Paths) {
     application.set_accels_for_action("win.save-preset", &["<Control><Shift>s"]);
     ui.refresh();
     ui.refresh_apps();
-    ui.window.present();
+    content
 }
 
 impl Ui {
@@ -1359,8 +1371,10 @@ impl Ui {
         };
         self.confirm("¿Aplicar el borrador a Waybar?", &summary, "Aplicar y recargar", false, |ui| {
             let result = {
-                let state = ui.state.borrow();
-                state.paths.apply(&state.draft, &state.baseline)
+                crate::settings::store::desktop_lock().and_then(|_lock| {
+                    let state = ui.state.borrow();
+                    state.paths.apply(&state.draft, &state.baseline)
+                })
             };
             match result {
                 Ok(_) => {

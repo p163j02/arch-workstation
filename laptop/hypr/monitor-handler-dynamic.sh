@@ -63,7 +63,7 @@ modo_extender() {
   batch+="dispatch hl.dsp.focus({monitor='$EXT'}) ; dispatch hl.dsp.focus({workspace='1'}) ; dispatch hl.dsp.cursor.move({x=960, y=540})"
 
   hyprctl --batch "$batch"
-  eww open sysmon-widget-ext 2>/dev/null
+  pc-settings --open-sysmon sysmon-widget-ext || eww open sysmon-widget-ext 2>/dev/null
 }
 
 modo_espejo() {
@@ -101,7 +101,7 @@ modo_solo_externo() {
   batch+="dispatch hl.dsp.focus({monitor='$EXT'}) ; dispatch hl.dsp.focus({workspace='1'}) ; dispatch hl.dsp.cursor.move({x=960, y=540})"
 
   hyprctl --batch "$batch"
-  eww open sysmon-widget-ext 2>/dev/null
+  pc-settings --open-sysmon sysmon-widget-ext || eww open sysmon-widget-ext 2>/dev/null
 }
 
 modo_solo_notebook() {

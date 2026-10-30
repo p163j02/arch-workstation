@@ -30,9 +30,9 @@ if ! awww query >/dev/null 2>&1; then
 fi
 wallpaper-studio --restore || waypaper --restore || echo "No se pudo restaurar el fondo; revisa Wallpaper Studio." >&2
 eww daemon || echo "Revisa el daemon Eww." >&2
-eww open sysmon-widget || echo "No se pudo abrir el monitor de recursos." >&2
+pc-settings --open-sysmon sysmon-widget || eww open sysmon-widget || echo "No se pudo abrir el monitor de recursos." >&2
 if [[ $(hyprctl monitors -j | jq length) -gt 1 ]]; then
-    eww open sysmon-widget-ext || true
+    pc-settings --open-sysmon sysmon-widget-ext || eww open sysmon-widget-ext || true
 else
     eww close sysmon-widget-ext 2>/dev/null || true
 fi

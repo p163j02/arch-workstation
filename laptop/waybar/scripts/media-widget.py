@@ -190,6 +190,12 @@ class MediaWidget(Gtk.Window):
         provider.load_from_data(CSS)
         Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
+        self.get_style_context().add_class('pc-settings-media')
+        self.settings_theme = Gtk.CssProvider()
+        Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), self.settings_theme, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1)
+        self.settings_signature = None
+        self.update_settings_theme()
+        GLib.timeout_add(500, self.update_settings_theme)
         self.current_art_url = ''
         self.duration = 0
         self.build_ui()
@@ -209,6 +215,18 @@ class MediaWidget(Gtk.Window):
         if event.keyval == Gdk.KEY_Escape:
             return self.request_close()
         return False
+
+    def update_settings_theme(self):
+        path = CC_ROOT / 'wallpaper-studio.scss'
+        try:
+            stat = path.stat()
+            signature = (stat.st_ino, stat.st_mtime_ns, stat.st_size)
+            if signature != self.settings_signature:
+                self.settings_theme.load_from_data(path.read_bytes())
+                self.settings_signature = signature
+        except (OSError, GLib.Error):
+            pass
+        return True
 
     def build_ui(self):
         outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)

@@ -108,3 +108,14 @@ bash ~/arch-workstation/laptop/scripts/upgrade-waybar-lua.sh
 ```
 
 Este comando verifica el soporte en el binario, instala la versión compatible si falta y reemplaza el proceso de Waybar; recargar con SIGUSR2 conserva el ejecutable anterior. No reemplaza la configuración de la barra.
+
+
+## Configuración integrada y Fastfetch
+
+Desde esta carpeta, `bash apps/pc-settings/install.sh` instala **Configuración del notebook**
+en Rofi y el comando `pc-settings`. Reúne pantallas, Wallpaper Studio, Waybar Editor y
+transparencias/widgets. La instalación completa también lo incluye.
+
+Wallpaper Studio incorpora Fastfetch por fondo: perfiles, textos, 16 colores ANSI y una
+biblioteca con cuatro imágenes originales y 19 variantes Silphwave.
+Consulta [Configuración](apps/pc-settings/README.md) y [Fastfetch](apps/wallpaper-studio/README.md#fastfetch-por-fondo).

@@ -24,8 +24,15 @@ function settings.monitor(text)
     if parts[2] == "disabled" or parts[2] == "disable" then
         spec.disabled = true
     else
+        spec.disabled = false
         spec.mode, spec.position, spec.scale = parts[2], parts[3], scalar(parts[4] or "1")
-        if parts[5] == "mirror" then spec.mirror = parts[6] end
+        local index = 5
+        while index <= #parts do
+            if parts[index] == "mirror" then spec.mirror = parts[index + 1]
+            elseif parts[index] == "transform" then spec.transform = tonumber(parts[index + 1])
+            end
+            index = index + 2
+        end
     end
     hl.monitor(spec)
 end

@@ -309,11 +309,11 @@ fn write_bundle_atomic(path: &Path, bundle: &Bundle, no_overwrite: bool) -> Resu
     write_text_atomic_with_mode(path, &content, no_overwrite, Some(0o600))
 }
 
-fn write_text_atomic(path: &Path, content: &str, no_overwrite: bool) -> Result<()> {
+pub(crate) fn write_text_atomic(path: &Path, content: &str, no_overwrite: bool) -> Result<()> {
     write_text_atomic_with_mode(path, content, no_overwrite, None)
 }
 
-fn write_text_atomic_with_mode(
+pub(crate) fn write_text_atomic_with_mode(
     path: &Path,
     content: &str,
     no_overwrite: bool,
