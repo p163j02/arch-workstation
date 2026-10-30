@@ -4,6 +4,7 @@ After=graphical-session.target
 PartOf=graphical-session.target
 
 [Service]
+Environment=GDK_BACKEND=wayland
 ExecStart=/usr/bin/eww --force-wayland --no-daemonize -c %h/.config/eww/control-center daemon
 ExecStopPost=%h/.config/eww/control-center/scripts/popup-manager.py cleanup
 Restart=on-failure

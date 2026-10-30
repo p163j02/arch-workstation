@@ -95,7 +95,7 @@
   },
   "custom/newws": {
     "format": "+",
-    "on-click": "hyprctl dispatch workspace e+1",
+    "on-click": "hyprctl dispatch 'hl.dsp.focus({workspace=\"e+1\"})'",
     "tooltip": false
   },
   "custom/firefox": {

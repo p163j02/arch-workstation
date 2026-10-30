@@ -3,17 +3,17 @@
 mover_a_notebook() {
     sleep 0.5
     for i in 1 2 3 4 5 6; do
-        hyprctl dispatch moveworkspacetomonitor "$i eDP-1"
+        hyprctl dispatch "hl.dsp.workspace.move({workspace='$i', monitor='eDP-1'})"
     done
-    hyprctl dispatch workspace 1
+    hyprctl dispatch "hl.dsp.focus({workspace='1'})"
 }
 
 mover_a_hdmi() {
     sleep 1
     for i in 1 2 3 4 5 6; do
-        hyprctl dispatch moveworkspacetomonitor "$i HDMI-A-1"
+        hyprctl dispatch "hl.dsp.workspace.move({workspace='$i', monitor='HDMI-A-1'})"
     done
-    hyprctl dispatch workspace 1
+    hyprctl dispatch "hl.dsp.focus({workspace='1'})"
 }
 
 # Al iniciar verificar estado

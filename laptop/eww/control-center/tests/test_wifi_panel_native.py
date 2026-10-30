@@ -181,9 +181,9 @@ class NativeWifiHelpers(unittest.TestCase):
             self.assertTrue((SCRIPTS / 'fast-client').is_file())
 
     def test_popup_cmdline_guard(self):
-        self.assertTrue(popup_manager._is_wifi_panel_cmdline(['/usr/bin/python3', str(popup_manager.WIFI_PANEL)]))
-        self.assertTrue(popup_manager._is_wifi_panel_cmdline(['/usr/bin/python3', '/tmp/wifi-panel.py']))
-        self.assertFalse(popup_manager._is_wifi_panel_cmdline(['/usr/bin/python3', '/tmp/other.py']))
+        self.assertTrue(popup_manager._is_panel_cmdline(['/usr/bin/python3', str(popup_manager.NATIVE_PANELS['wifi'])], 'wifi'))
+        self.assertFalse(popup_manager._is_panel_cmdline(['/usr/bin/python3', '/tmp/wifi-panel.py'], 'wifi'))
+        self.assertFalse(popup_manager._is_panel_cmdline(['/usr/bin/python3', '/tmp/other.py'], 'wifi'))
 
 
 if __name__ == '__main__':

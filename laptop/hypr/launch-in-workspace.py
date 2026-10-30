@@ -25,8 +25,9 @@ def main():
 
     # Preserve desktop entries' working directories and quote each argument.
     command = f"cd {shlex.quote(os.getcwd())} && exec {shlex.join(sys.argv[1:])}"
+    lua = 'hl.exec_cmd(' + json.dumps(command, ensure_ascii=False) + ', { workspace = ' + json.dumps(target + ' silent', ensure_ascii=False) + ' })'
     result = subprocess.run(
-        ["hyprctl", "dispatch", "exec", f"[workspace {target} silent] {command}"],
+        ["hyprctl", "eval", lua],
         text=True, capture_output=True,
     )
     if result.returncode != 0 or result.stdout.strip() != "ok":

@@ -123,11 +123,13 @@ hl.animation({ leaf = "zoomFactor", enabled = true, speed = 7.0, bezier = "quick
 hl.gesture({ fingers = 3, direction = "horizontal", action = "workspace" })
 hl.bind("SUPER + Q", hl.dsp.exec_cmd("kitty"))
 hl.bind("SUPER + C", hl.dsp.window.close())
-hl.bind("SUPER + M", hl.dsp.exec_cmd("command -v hyprshutdown >/dev/null 2>&1 && hyprshutdown || hyprctl dispatch exit"))
+hl.bind("SUPER + M", hl.dsp.exec_cmd("command -v hyprshutdown >/dev/null 2>&1 && hyprshutdown || hyprctl dispatch 'hl.dsp.exit()'"))
 hl.bind("SUPER + E", hl.dsp.exec_cmd("nautilus --new-window"))
 hl.bind("SUPER + V", hl.dsp.window.float({ action = "toggle" }))
 hl.bind("SUPER + R", hl.dsp.exec_cmd("rofi -show drun"))
 hl.bind("SUPER + P", hl.dsp.window.pseudo())
+hl.bind("SUPER + SHIFT + P", hl.dsp.exec_cmd("kitty -e bash -ic '@HOME@/.pi/agent/bin/pi'"))
+hl.bind("SUPER + Escape", hl.dsp.exec_cmd("~/.config/eww/control-center/scripts/popup-manager.py close"))
 hl.bind("SUPER + J", hl.dsp.layout("togglesplit"))
 hl.bind("SUPER + left", hl.dsp.focus({ direction = "left" }))
 hl.bind("SUPER + right", hl.dsp.focus({ direction = "right" }))
@@ -183,7 +185,11 @@ hl.bind("SUPER + CTRL + up", hl.dsp.window.move({ x = 0, y = -40, relative = tru
 hl.bind("SUPER + CTRL + down", hl.dsp.window.move({ x = 0, y = 40, relative = true }), { repeating = true })
 hl.bind("SUPER + ALT + right", hl.dsp.focus({ workspace = "e+1" }))
 hl.bind("SUPER + ALT + left", hl.dsp.focus({ workspace = "e-1" }))
-hl.bind("SUPER + N", hl.dsp.exec_cmd("hyprctl dispatch workspace $(( $(hyprctl workspaces -j | python3 -c \"import sys,json; ws=json.load(sys.stdin); print(max(w['id'] for w in ws))\") + 1 ))"))
+hl.bind("SUPER + N", function()
+    local last = 0
+    for _, workspace in ipairs(hl.get_workspaces()) do last = math.max(last, workspace.id) end
+    hl.dispatch(hl.dsp.focus({ workspace = tostring(last + 1) }))
+end)
 hl.bind("CTRL + ALT + left", hl.dsp.window.swap({ direction = "left" }))
 hl.bind("CTRL + ALT + right", hl.dsp.window.swap({ direction = "right" }))
 hl.bind("CTRL + ALT + up", hl.dsp.window.swap({ direction = "up" }))
@@ -191,6 +197,7 @@ hl.bind("CTRL + ALT + down", hl.dsp.window.swap({ direction = "down" }))
 hl.bind("SUPER + CTRL + right", hl.dsp.window.move({ workspace = "e+1" }))
 hl.bind("SUPER + CTRL + left", hl.dsp.window.move({ workspace = "e-1" }))
 hl.bind("SUPER + L", hl.dsp.exec_cmd("hyprlock"))
+hl.bind("switch:on:Lid Switch", hl.dsp.exec_cmd("hyprlock --grace 0"), { locked = true })
 hl.bind("SUPER + T", hl.dsp.layout("togglesplit"))
 hl.bind("SUPER + TAB", hl.dsp.exec_cmd("rofi -show window"))
 hl.device({ name = "epic-mouse-v1", sensitivity = -0.5 })
@@ -258,7 +265,6 @@ hl.window_rule({
     move = "75% 50",
     size = "330 175",
 })
-hl.on("hyprland.start", function() hl.exec_cmd("~/.config/hypr/battery-monitor.sh") end)
 hl.bind("SUPER + F2", hl.dsp.exec_cmd("~/.config/hypr/monitor-switch.sh"))
 -- Conserva los ajustes de local.conf y los bordes escritos por Wallpaper Studio.
 overrides.read(directory .. "local.conf")

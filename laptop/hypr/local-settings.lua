@@ -17,6 +17,19 @@ local function scalar(text)
     return tonumber(text) or text
 end
 
+function settings.monitor(text)
+    local parts = {}
+    for part in (text .. ","):gmatch("(.-),") do parts[#parts + 1] = trim(part) end
+    local spec = { output = parts[1] }
+    if parts[2] == "disabled" or parts[2] == "disable" then
+        spec.disabled = true
+    else
+        spec.mode, spec.position, spec.scale = parts[2], parts[3], scalar(parts[4] or "1")
+        if parts[5] == "mirror" then spec.mirror = parts[6] end
+    end
+    hl.monitor(spec)
+end
+
 function settings.read(path)
     local file = io.open(path)
     if not file then return end
@@ -35,16 +48,7 @@ function settings.read(path)
                 assert(key, "Unsupported local setting in " .. path .. ": " .. line)
                 key = trim(key)
                 if key == "monitor" and #sections == 0 then
-                    local parts = {}
-                    for part in (text .. ","):gmatch("(.-),") do parts[#parts + 1] = trim(part) end
-                    local spec = { output = parts[1] }
-                    if parts[2] == "disabled" or parts[2] == "disable" then
-                        spec.disabled = true
-                    else
-                        spec.mode, spec.position, spec.scale = parts[2], parts[3], scalar(parts[4] or "1")
-                        if parts[5] == "mirror" then spec.mirror = parts[6] end
-                    end
-                    hl.monitor(spec)
+                    settings.monitor(text)
                 else
                     local keys = {}
                     for _, name in ipairs(sections) do keys[#keys + 1] = name end

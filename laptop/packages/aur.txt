@@ -14,3 +14,4 @@ visual-studio-code-bin
 waypaper
 wlogout
 zen-browser-bin
+waybar-git

@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 import gi
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk, GLib, Gdk, GdkPixbuf
-import subprocess, urllib.request, threading, os, sys
+gi.require_version('GtkLayerShell', '0.1')
+from gi.repository import Gtk, GLib, Gdk, GdkPixbuf, GtkLayerShell
+import subprocess, urllib.request, threading, os, sys, signal
+from pathlib import Path
+
+CC_ROOT = Path(__file__).resolve().parents[2] / "eww/control-center"
+PID_FILE = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")) / "waybar-control-center/media-panel.pid"
 
 def run(cmd):
     try:
@@ -156,9 +161,22 @@ class ProgressBar(Gtk.DrawingArea):
 
 
 class MediaWidget(Gtk.Window):
-    def __init__(self):
+    def __init__(self, x=12, y=54, width=380, maxheight=260, screen_index=0):
         super().__init__()
         self.set_title("media-widget")
+        GtkLayerShell.init_for_window(self)
+        GtkLayerShell.set_namespace(self, 'waybar-control-center')
+        GtkLayerShell.set_layer(self, GtkLayerShell.Layer.OVERLAY)
+        GtkLayerShell.set_anchor(self, GtkLayerShell.Edge.TOP, True)
+        GtkLayerShell.set_anchor(self, GtkLayerShell.Edge.LEFT, True)
+        GtkLayerShell.set_margin(self, GtkLayerShell.Edge.LEFT, x)
+        GtkLayerShell.set_margin(self, GtkLayerShell.Edge.TOP, y)
+        GtkLayerShell.set_keyboard_mode(self, GtkLayerShell.KeyboardMode.ON_DEMAND)
+        GtkLayerShell.set_exclusive_zone(self, 0)
+        display = Gdk.Display.get_default()
+        if display is not None and 0 <= screen_index < display.get_n_monitors():
+            GtkLayerShell.set_monitor(self, display.get_monitor(screen_index))
+        self.set_size_request(width, -1)
         self.set_decorated(False)
         self.set_keep_above(True)
         self.set_resizable(False)
@@ -179,7 +197,18 @@ class MediaWidget(Gtk.Window):
         GLib.timeout_add(1000, self.update_progress)
         GLib.timeout_add(2000, self.update_info)
         GLib.timeout_add(40,   self.tick_marquee)
-        self.connect('key-press-event', lambda w, e: Gtk.main_quit() if e.keyval == Gdk.KEY_Escape else None)
+        self.connect('key-press-event', self.on_key)
+        self.connect('delete-event', lambda *_: self.request_close())
+
+    def request_close(self):
+        subprocess.Popen([str(CC_ROOT / 'scripts/popup-manager.py'), 'close'],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return True
+
+    def on_key(self, _widget, event):
+        if event.keyval == Gdk.KEY_Escape:
+            return self.request_close()
+        return False
 
     def build_ui(self):
         outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
@@ -187,6 +216,16 @@ class MediaWidget(Gtk.Window):
         outer.set_margin_bottom(12)
         outer.set_margin_start(12)
         outer.set_margin_end(12)
+
+        header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        title = Gtk.Label(label="Multimedia")
+        title.set_xalign(0)
+        header.pack_start(title, True, True, 0)
+        close_button = Gtk.Button(label="󰅖")
+        close_button.set_tooltip_text("Cerrar · Escape")
+        close_button.connect('clicked', lambda *_: self.request_close())
+        header.pack_end(close_button, False, False, 0)
+        outer.pack_start(header, False, False, 0)
 
         # ── Row 1: art + info ──
         top = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
@@ -415,13 +454,16 @@ class MediaWidget(Gtk.Window):
 
 
 if __name__ == '__main__':
-    script_name = os.path.basename(__file__)
-    pid = run(f"pgrep -f {script_name}").split('\n')
-    others = [p for p in pid if p and p != str(os.getpid())]
-    if others:
-        for p in others: run(f"kill {p}")
-        sys.exit(0)
-
-    app = MediaWidget()
+    if len(sys.argv) < 6:
+        os.execv(str(CC_ROOT / 'scripts/popup-manager.py'), ['popup-manager.py', 'media'])
+    x, y, width, maxheight, screen_index = map(int, sys.argv[1:6])
+    signal.signal(signal.SIGTERM, lambda *_: Gtk.main_quit())
+    signal.signal(signal.SIGINT, lambda *_: Gtk.main_quit())
+    app = MediaWidget(x, y, width, maxheight, screen_index)
     app.show_all()
-    Gtk.main()
+    PID_FILE.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    PID_FILE.write_text(str(os.getpid()))
+    try:
+        Gtk.main()
+    finally:
+        PID_FILE.unlink(missing_ok=True)

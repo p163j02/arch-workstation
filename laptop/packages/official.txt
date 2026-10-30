@@ -143,7 +143,6 @@ uv
 vim
 virtualbox
 virtualbox-host-dkms
-waybar
 wireguard-tools
 wireplumber
 wl-clipboard

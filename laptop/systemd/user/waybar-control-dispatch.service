@@ -4,6 +4,7 @@ After=graphical-session.target waybar-control-center.service
 PartOf=graphical-session.target
 
 [Service]
+Environment=GDK_BACKEND=wayland
 ExecStart=/usr/bin/python3 %h/.config/eww/control-center/scripts/dispatch-service.py
 Restart=on-failure
 RestartSec=1

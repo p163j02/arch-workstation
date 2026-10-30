@@ -286,13 +286,13 @@ fn apply_with(
             "Fondo aplicado, pero no se pudo guardar la restauración: {error:#}"
         ));
     }
-    let batch = format!(
-        "keyword general:col.active_border rgba({}ee) rgba({}ee) 45deg ; keyword general:col.inactive_border rgba({}aa)",
+    let lua = format!(
+        "hl.config({{ general = {{ col = {{ active_border = {{ colors = {{ \"rgba({}ee)\", \"rgba({}ee)\" }}, angle = 45 }}, inactive_border = \"rgba({}aa)\" }} }} }})",
         &palette.accent[1..],
         &palette.secondary[1..],
         &palette.background[1..]
     );
-    if let Err(error) = command("hyprctl", &["--batch", &batch]) {
+    if let Err(error) = command("hyprctl", &["eval", &lua]) {
         warnings.push(format!(
             "Bordes guardados en local.conf; no se pudieron actualizar en vivo: {error:#}"
         ));
@@ -796,6 +796,9 @@ mod tests {
             ["--transition-type", "wave", "--transition-duration", "1.5"]
         );
         assert_eq!(calls[0].1.last().unwrap(), image.to_str().unwrap());
+        assert_eq!(calls[1].1[0], "eval");
+        assert!(calls[1].1[1].contains("hl.config("));
+        assert!(calls[1].1[1].contains("rgba(65d9ffee)"));
         let state = paths.read_state().unwrap();
         assert_eq!(state.current.as_deref(), image.to_str());
         assert_eq!(state.transition.effect, "wave");

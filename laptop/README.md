@@ -96,3 +96,15 @@ bash install.sh --check
 Las pruebas incluyen una instalación en un HOME temporal utilizando únicamente una copia de esta carpeta y comprueban que se preserven el estado personal de Wallpaper Studio y los datos de los editores. No sustituyen una reinstalación física ni verifican el desbloqueo mediante contraseña en otro equipo.
 
 Los respaldos de configuraciones se guardan en `~/.local/state/dotfiles/backups/`. La vinculación de SDDM/Hyprlock crea además un respaldo `~/.local/state/wallpaper-studio/login-backup.XXXXXXXX/` y muestra su ruta.
+
+## Waybar y el protocolo Lua de Hyprland 0.57
+
+Waybar 0.15.0 no incorpora el soporte Lua del módulo nativo `hyprland/workspaces`: validar JSONC y CSS no verifica sus órdenes IPC al pulsar. El perfil del notebook usa `waybar-git` para conservar los iconos de aplicaciones, los workspaces persistentes y sus clics. El lanzador central usa `hyprctl eval` con `hl.exec_cmd` y reglas nativas por lanzamiento.
+
+En una instalación existente con `yay`, desde una terminal de Hyprland:
+
+```sh
+bash ~/arch-workstation/laptop/scripts/upgrade-waybar-lua.sh
+```
+
+Este comando verifica el soporte en el binario, instala la versión compatible si falta y reemplaza el proceso de Waybar; recargar con SIGUSR2 conserva el ejecutable anterior. No reemplaza la configuración de la barra.

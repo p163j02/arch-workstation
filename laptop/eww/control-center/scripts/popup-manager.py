@@ -5,15 +5,20 @@ import json
 import os
 from pathlib import Path
 import signal
+import shlex
 import shutil
 import subprocess
 import sys
 import time
 import backend
 
-WINDOWS = {m: 'cc-' + m for m in ('volume', 'wifi', 'brightness', 'calendar', 'bluetooth', 'airpods', 'profiles', 'nightlight', 'power')}
-WIFI_PANEL = backend.ROOT / 'scripts' / 'wifi-panel.py'
-WIFI_PID = backend.RUN / 'wifi-panel.pid'
+WINDOWS = {m: 'cc-' + m for m in ('volume', 'wifi', 'brightness', 'calendar', 'bluetooth', 'airpods', 'profiles', 'nightlight', 'power', 'media')}
+NATIVE_PANELS = {'wifi': backend.ROOT / 'scripts/wifi-panel.py',
+                 'media': backend.ROOT.parents[1] / 'waybar/scripts/media-widget.py'}
+
+
+def panel_pid_file(module):
+    return backend.RUN / f'{module}-panel.pid'
 
 
 def eww(*args, check=True):
@@ -47,7 +52,7 @@ def geometry(module, monitor=None, monitors=None):
     bars = [layer for level in layers.get(selected['name'], {}).get('levels', {}).values() for layer in level if layer.get('namespace') == 'waybar']
     bottom = max((layer['y'] - selected['y'] + layer['h'] for layer in bars if layer['y'] - selected['y'] < h / 2), default=46)
     y = int(bottom + 8)
-    desired = {'volume': 330, 'wifi': 560, 'brightness': 520, 'calendar': 430, 'bluetooth': 480, 'airpods': 710, 'profiles': 500, 'nightlight': 350, 'power': 440}[module]
+    desired = {'volume': 330, 'wifi': 560, 'brightness': 520, 'calendar': 430, 'bluetooth': 480, 'airpods': 710, 'profiles': 500, 'nightlight': 350, 'power': 440, 'media': 260}[module]
     return selected['name'], x, y, width, min(desired, int(h - y - 12))
 
 
@@ -89,34 +94,36 @@ def screen_index(monitors, monitor):
 
 
 def input_bindings(enable):
-    marker = backend.RUN / 'input-bindings.json'
-    if not enable:
-        try:
-            keys = json.loads(marker.read_text())
-        except (OSError, ValueError):
-            keys = []
-        if keys:
-            backend.command(['hyprctl', '--batch', ';'.join('keyword unbind ,' + key for key in keys)])
-        marker.unlink(missing_ok=True)
-        return
-    binds = json.loads(backend.command(['hyprctl', '-j', 'binds']))
-    occupied = {b['key'] for b in binds if b['modmask'] == 0}
-    keys, commands = [], []
-    for key in ('Escape', 'mouse:272', 'mouse:273'):
-        if key in occupied:
-            continue
-        keys.append(key)
-        directive = 'bind' if key == 'Escape' else 'bindn'
-        mode = 'close' if key == 'Escape' else 'outside'
-        commands.append(f'keyword {directive} ,{key},exec,{backend.ROOT}/scripts/popup-manager.py {mode}')
-    marker.write_text(json.dumps(keys))
-    if commands:
-        backend.command(['hyprctl', '--batch', ';'.join(commands)])
+    # Keep our own Lua handles: never unbind the user's Escape/mouse shortcuts.
+    code = ['for _, bind in ipairs(_G.waybar_control_center_binds or {}) do bind:unbind() end',
+            '_G.waybar_control_center_binds = {}']
+    if enable:
+        state_path = backend.RUN / 'popup.json'
+        state = json.loads(state_path.read_text())
+        state['token'] = str(time.time_ns())
+        state_path.write_text(json.dumps(state))
+        script = shlex.quote(str(backend.ROOT / 'scripts/popup-manager.py'))
+        command = json.dumps(f'{script} close {state["token"]}', ensure_ascii=False)
+        # Read the press position in-process, before a slider drag can move it outside.
+        code.append("""local function close_outside()
+            local cursor = hl.get_cursor_pos()
+            if not cursor then return end
+            for _, panel in ipairs(hl.get_layers()) do
+                if panel.mapped and panel.namespace == "waybar-control-center"
+                    and panel.x <= cursor.x and cursor.x < panel.x + panel.w
+                    and panel.y <= cursor.y and cursor.y < panel.y + panel.h then return end
+            end
+            hl.exec_cmd(""" + command + ") end")
+        code.append(f'table.insert(_G.waybar_control_center_binds, hl.bind("Escape", hl.dsp.exec_cmd({command}), {{ transparent = true }}))')
+        for button in range(272, 280):
+            code.append(f'table.insert(_G.waybar_control_center_binds, hl.bind("mouse:{button}", close_outside, {{ non_consuming = true, ignore_mods = true, transparent = true }}))')
+    backend.command(['hyprctl', 'eval', '; '.join(code)])
+    (backend.RUN / 'input-bindings.json').unlink(missing_ok=True)
 
 
-def _read_wifi_pid():
+def _read_panel_pid(module):
     try:
-        return int(WIFI_PID.read_text().strip())
+        return int(panel_pid_file(module).read_text().strip())
     except (OSError, ValueError):
         return None
 
@@ -129,68 +136,67 @@ def _read_cmdline(pid):
     return [arg for arg in raw.decode('utf-8', errors='ignore').split('\0') if arg]
 
 
-def _is_wifi_panel_cmdline(cmdline):
-    target = str(WIFI_PANEL)
-    return any(arg == target or arg.endswith('/wifi-panel.py') for arg in cmdline)
+def _is_panel_cmdline(cmdline, module):
+    return str(NATIVE_PANELS[module]) in cmdline
 
 
-def wifi_panel_running():
-    pid = _read_wifi_pid()
+def panel_running(module):
+    pid = _read_panel_pid(module)
     if not pid:
-        WIFI_PID.unlink(missing_ok=True)
+        panel_pid_file(module).unlink(missing_ok=True)
         return False
-    if _is_wifi_panel_cmdline(_read_cmdline(pid)):
+    if _is_panel_cmdline(_read_cmdline(pid), module):
         return True
-    WIFI_PID.unlink(missing_ok=True)
+    panel_pid_file(module).unlink(missing_ok=True)
     return False
 
 
-def close_wifi_panel(timeout=1.5):
-    pid = _read_wifi_pid()
+def close_native_panel(module, timeout=1.5):
+    pid = _read_panel_pid(module)
     if not pid:
-        WIFI_PID.unlink(missing_ok=True)
+        panel_pid_file(module).unlink(missing_ok=True)
         return
     cmdline = _read_cmdline(pid)
-    if not _is_wifi_panel_cmdline(cmdline):
-        WIFI_PID.unlink(missing_ok=True)
+    if not _is_panel_cmdline(cmdline, module):
+        panel_pid_file(module).unlink(missing_ok=True)
         return
     try:
         os.kill(pid, signal.SIGTERM)
     except ProcessLookupError:
-        WIFI_PID.unlink(missing_ok=True)
+        panel_pid_file(module).unlink(missing_ok=True)
         return
     deadline = time.time() + timeout
     while time.time() < deadline:
         if not Path(f'/proc/{pid}').exists():
-            WIFI_PID.unlink(missing_ok=True)
+            panel_pid_file(module).unlink(missing_ok=True)
             return
         time.sleep(0.05)
     try:
         os.kill(pid, signal.SIGKILL)
     except ProcessLookupError:
         pass
-    WIFI_PID.unlink(missing_ok=True)
+    panel_pid_file(module).unlink(missing_ok=True)
 
 
-def open_wifi_panel(x, y, width, maxheight, screen, monitor):
-    close_wifi_panel()
+def open_native_panel(module, x, y, width, maxheight, screen, monitor):
+    close_native_panel(module)
     python = sys.executable if Path(sys.executable).name.startswith('python') else (shutil.which('python3') or '/usr/bin/python3')
     proc = subprocess.Popen(
-        [python, str(WIFI_PANEL), str(x), str(y), str(width), str(maxheight), str(screen), monitor],
+        [python, str(NATIVE_PANELS[module]), str(x), str(y), str(width), str(maxheight), str(screen), monitor],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         close_fds=True,
     )
     deadline = time.time() + 2
     while time.time() < deadline:
-        if proc.poll() is None and wifi_panel_running():
+        if proc.poll() is None and panel_running(module):
             return
         time.sleep(0.05)
-    raise RuntimeError('No se pudo iniciar el popup nativo de Wi-Fi')
+    raise RuntimeError(f'No se pudo iniciar el popup {module}')
 
 
-def outside():
-    if not (backend.RUN / 'popup.json').exists():
+def outside(token=None):
+    if not current_popup(token):
         return
     cursor = json.loads(backend.command(['hyprctl', '-j', 'cursorpos']))
     layers = json.loads(backend.command(['hyprctl', '-j', 'layers']))
@@ -199,14 +205,23 @@ def outside():
         return panel['x'] <= cursor['x'] < panel['x'] + panel['w'] and panel['y'] <= cursor['y'] < panel['y'] + panel['h']
 
     panels = [p for d in layers.values() for level in d['levels'].values() for p in level]
-    if any(contains(p) for p in panels if p.get('namespace') in ('waybar-control-center', 'waybar')):
+    if any(contains(p) for p in panels if p.get('namespace') == 'waybar-control-center'):
         return
     close()
 
 
+def current_popup(token=None):
+    try:
+        state = json.loads((backend.RUN / 'popup.json').read_text())
+        return token is None or state.get('token') == token
+    except (OSError, ValueError):
+        return False
+
+
 def close(opened=None):
     input_bindings(False)
-    close_wifi_panel()
+    for native in NATIVE_PANELS:
+        close_native_panel(native)
     if opened is None:
         opened = eww('active-windows', check=False)
     ids = [line.split(':', 1)[0] for line in opened.splitlines() if line.split(':', 1)[0] in WINDOWS.values()]
@@ -224,22 +239,24 @@ def main(args=None):
         fcntl.flock(lock, fcntl.LOCK_EX)
         if mode == 'cleanup':
             input_bindings(False)
-            close_wifi_panel()
+            for native in NATIVE_PANELS:
+                close_native_panel(native)
             (backend.RUN / 'popup.json').unlink(missing_ok=True)
             return
         if mode == 'outside':
-            outside()
+            outside(args[1] if len(args) > 1 else None)
             return
         if mode == 'close':
-            close()
+            if len(args) == 1 or current_popup(args[1]):
+                close()
             return
         module = {'nightlight': 'brightness'}.get(mode, mode)
         if module not in WINDOWS:
             raise ValueError('Popup inválido')
 
-        if module == 'wifi':
+        if module in NATIVE_PANELS:
             opened = eww('active-windows', check=False)
-            already = wifi_panel_running()
+            already = panel_running(module)
             close(opened)
             if already:
                 return
@@ -250,7 +267,7 @@ def main(args=None):
             index = screen_index(monitors, monitor)
             hm = next(m for m in monitors if m['name'] == monitor)
             offset_y = max(0, y - hm.get('reserved', [0, 0, 0, 0])[1])
-            open_wifi_panel(x, offset_y, width, maxheight, index, monitor)
+            open_native_panel(module, x, offset_y, width, maxheight, index, monitor)
             input_bindings(True)
             return
 

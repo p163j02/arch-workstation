@@ -501,7 +501,7 @@ def locked_action(module, act, value, lock):
         elif act=='confirm' and value in POWER_ACTIONS and power_state()['pending']==value:
             confirmation.unlink(missing_ok=True)
             command([str(ROOT/'scripts/popup-manager.py'),'close'])
-            command({'shutdown':['systemctl','poweroff'],'reboot':['systemctl','reboot'],'logout':['hyprctl','dispatch','exit']}[value])
+            command({'shutdown':['systemctl','poweroff'],'reboot':['systemctl','reboot'],'logout':['hyprctl','dispatch','hl.dsp.exit()']}[value])
         else:
             raise ValueError('Confirmación vencida o acción no válida')
     elif module=='volume':

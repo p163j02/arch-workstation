@@ -49,18 +49,18 @@ modo_extender() {
   local EXT=$1
   log "modo: extender ($EXT)"
 
-  hyprctl keyword monitor "$EXT,preferred,0x0,1"
-  hyprctl keyword monitor "$NOTEBOOK,1920x1080@60,1920x0,1"
+  "$HOME/.config/hypr/monitor-set.py" "$EXT,preferred,0x0,1"
+  "$HOME/.config/hypr/monitor-set.py" "$NOTEBOOK,1920x1080@60,1920x0,1"
   sleep 0.3
 
   local batch=""
   for ws in 1 2 3 4 5 6; do
-    batch+="dispatch moveworkspacetomonitor $ws $EXT ; "
+    batch+="dispatch hl.dsp.workspace.move({workspace='$ws', monitor='$EXT'}) ; "
   done
   for ws in 7 8 9 10 11 12; do
-    batch+="dispatch moveworkspacetomonitor $ws $NOTEBOOK ; "
+    batch+="dispatch hl.dsp.workspace.move({workspace='$ws', monitor='$NOTEBOOK'}) ; "
   done
-  batch+="dispatch focusmonitor $EXT ; dispatch workspace 1 ; dispatch movecursor 960 540"
+  batch+="dispatch hl.dsp.focus({monitor='$EXT'}) ; dispatch hl.dsp.focus({workspace='1'}) ; dispatch hl.dsp.cursor.move({x=960, y=540})"
 
   hyprctl --batch "$batch"
   eww open sysmon-widget-ext 2>/dev/null
@@ -70,15 +70,15 @@ modo_espejo() {
   local EXT=$1
   log "modo: espejo ($EXT)"
 
-  hyprctl keyword monitor "$EXT,preferred,0x0,1,mirror,$NOTEBOOK"
-  hyprctl keyword monitor "$NOTEBOOK,1920x1080@60,0x0,1"
+  "$HOME/.config/hypr/monitor-set.py" "$EXT,preferred,0x0,1,mirror,$NOTEBOOK"
+  "$HOME/.config/hypr/monitor-set.py" "$NOTEBOOK,1920x1080@60,0x0,1"
   sleep 0.3
 
   # En espejo el foco se queda en el notebook
   hyprctl --batch "
-        dispatch focusmonitor $NOTEBOOK ;
-        dispatch workspace 1 ;
-        dispatch movecursor 960 540
+        dispatch hl.dsp.focus({monitor='$NOTEBOOK'}) ;
+        dispatch hl.dsp.focus({workspace='1'}) ;
+        dispatch hl.dsp.cursor.move({x=960, y=540})
     "
   eww close sysmon-widget-ext 2>/dev/null
 }
@@ -89,16 +89,16 @@ modo_solo_externo() {
 
   # Habilitar EXT antes de deshabilitar notebook para que los workspaces
   # tengan destino válido durante la transición
-  hyprctl keyword monitor "$EXT,preferred,0x0,1"
+  "$HOME/.config/hypr/monitor-set.py" "$EXT,preferred,0x0,1"
   sleep 0.5
-  hyprctl keyword monitor "$NOTEBOOK,disabled"
+  "$HOME/.config/hypr/monitor-set.py" "$NOTEBOOK,disabled"
   sleep 0.3
 
   local batch=""
   for ws in 1 2 3 4 5 6 7 8 9 10 11 12; do
-    batch+="dispatch moveworkspacetomonitor $ws $EXT ; "
+    batch+="dispatch hl.dsp.workspace.move({workspace='$ws', monitor='$EXT'}) ; "
   done
-  batch+="dispatch focusmonitor $EXT ; dispatch workspace 1 ; dispatch movecursor 960 540"
+  batch+="dispatch hl.dsp.focus({monitor='$EXT'}) ; dispatch hl.dsp.focus({workspace='1'}) ; dispatch hl.dsp.cursor.move({x=960, y=540})"
 
   hyprctl --batch "$batch"
   eww open sysmon-widget-ext 2>/dev/null
@@ -109,16 +109,16 @@ modo_solo_notebook() {
   log "modo: solo notebook (deshabilitando $EXT)"
 
   # Habilitar notebook ANTES de deshabilitar el externo
-  hyprctl keyword monitor "$NOTEBOOK,1920x1080@60,0x0,1"
+  "$HOME/.config/hypr/monitor-set.py" "$NOTEBOOK,1920x1080@60,0x0,1"
   sleep 0.5
-  hyprctl keyword monitor "$EXT,disabled"
+  "$HOME/.config/hypr/monitor-set.py" "$EXT,disabled"
   sleep 0.3
 
   local batch=""
   for ws in 1 2 3 4 5 6 7 8 9 10 11 12; do
-    batch+="dispatch moveworkspacetomonitor $ws $NOTEBOOK ; "
+    batch+="dispatch hl.dsp.workspace.move({workspace='$ws', monitor='$NOTEBOOK'}) ; "
   done
-  batch+="dispatch focusmonitor $NOTEBOOK ; dispatch workspace 1 ; dispatch movecursor 960 540"
+  batch+="dispatch hl.dsp.focus({monitor='$NOTEBOOK'}) ; dispatch hl.dsp.focus({workspace='1'}) ; dispatch hl.dsp.cursor.move({x=960, y=540})"
 
   hyprctl --batch "$batch"
   eww close sysmon-widget-ext 2>/dev/null
@@ -199,14 +199,14 @@ monitor_desconectado() {
   fi
 
   # Solo queda el notebook
-  hyprctl keyword monitor "$NOTEBOOK,1920x1080@60,0x0,1"
+  "$HOME/.config/hypr/monitor-set.py" "$NOTEBOOK,1920x1080@60,0x0,1"
   sleep 0.3
 
   local batch=""
   for ws in 1 2 3 4 5 6 7 8 9 10 11 12; do
-    batch+="dispatch moveworkspacetomonitor $ws $NOTEBOOK ; "
+    batch+="dispatch hl.dsp.workspace.move({workspace='$ws', monitor='$NOTEBOOK'}) ; "
   done
-  batch+="dispatch focusmonitor $NOTEBOOK ; dispatch workspace 1 ; dispatch movecursor 960 540"
+  batch+="dispatch hl.dsp.focus({monitor='$NOTEBOOK'}) ; dispatch hl.dsp.focus({workspace='1'}) ; dispatch hl.dsp.cursor.move({x=960, y=540})"
 
   hyprctl --batch "$batch"
   log "batch ejecutado, cursorpos: $(hyprctl cursorpos)"
@@ -226,7 +226,7 @@ monitor_desconectado() {
 externos_al_inicio=$(get_externos)
 if [ -z "$externos_al_inicio" ]; then
   log "inicio: solo notebook"
-  hyprctl keyword monitor "$NOTEBOOK,1920x1080@60,0x0,1"
+  "$HOME/.config/hypr/monitor-set.py" "$NOTEBOOK,1920x1080@60,0x0,1"
   reload_bars "$NOTEBOOK"
 else
   log "inicio: externos detectados → $externos_al_inicio (extendiendo sin menú)"
