@@ -16,6 +16,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::rc::Rc;
+use std::sync::mpsc::{self, SyncSender, TryRecvError};
 use std::time::{Duration, SystemTime};
 use theme::{
     Palette, Paths, Transition, apply_wallpaper, extract_palette, palette_for, save_preferences,
@@ -193,7 +194,7 @@ impl View {
             timer.remove();
         }
     }
-    fn select(&self, path: PathBuf) {
+    fn select(self: &Rc<Self>, path: PathBuf) {
         self.stop_animation();
         self.picture.set_paintable(gdk::Paintable::NONE);
         self.actions(false);
@@ -221,15 +222,7 @@ impl View {
                     view.set_palette(&palette);
                     view.fastfetch
                         .load(view.selected.borrow().as_deref().unwrap(), &fastfetch);
-                    match view.preview(&data) {
-                        Ok(animated) => {
-                            view.actions(true);
-                            view.status.set_text(if animated { "GIF animado · Edita la paleta o aplica el fondo en todos los monitores." } else { "Edita la paleta o aplica el fondo en todos los monitores." });
-                        }
-                        Err(error) => view
-                            .status
-                            .set_text(&format!("No se pudo abrir la imagen: {error:#}")),
-                    }
+                    view.preview(data);
                 }
                 Ok(Err(error)) => view
                     .status
@@ -238,43 +231,114 @@ impl View {
             }
         });
     }
-    fn preview(&self, data: &[u8]) -> Result<bool> {
-        let loader = PixbufLoader::new();
-        // Decode the preview at display size instead of retaining full-size GIF frames.
-        loader.connect_size_prepared(|loader, width, height| {
-            let scale = (960.0 / f64::from(width))
-                .min(540.0 / f64::from(height))
-                .min(1.0);
-            loader.set_size(
-                (f64::from(width) * scale).round().max(1.0) as i32,
-                (f64::from(height) * scale).round().max(1.0) as i32,
-            );
+    fn preview(self: &Rc<Self>, data: Vec<u8>) {
+        let (sender, receiver) = mpsc::sync_channel(1);
+        std::thread::spawn(move || {
+            if let Err(error) = preview_frames(&data, &sender) {
+                let _ = sender.send(Err(format!("{error:#}")));
+            }
         });
-        let written = loader.write(data);
-        let closed = loader.close();
-        written?;
-        closed?;
-        let animation = loader
-            .animation()
-            .context("Formato de imagen no compatible")?;
-        let iter = animation.iter(Some(SystemTime::now()));
-        self.picture
-            .set_paintable(Some(&gdk::Texture::for_pixbuf(&iter.pixbuf())));
-        let animated = !animation.is_static_image();
-        if animated {
-            let weak_picture = self.picture.downgrade();
-            let timer = glib::timeout_add_local(Duration::from_millis(16), move || {
-                let Some(picture) = weak_picture.upgrade() else {
-                    return glib::ControlFlow::Break;
-                };
-                if picture.is_mapped() && iter.advance(SystemTime::now()) {
-                    picture.set_paintable(Some(&gdk::Texture::for_pixbuf(&iter.pixbuf())));
+        let weak = Rc::downgrade(self);
+        let mut first = true;
+        let timer = glib::timeout_add_local(Duration::from_millis(33), move || {
+            let Some(view) = weak.upgrade() else {
+                return glib::ControlFlow::Break;
+            };
+            if !view.picture.is_mapped() {
+                return glib::ControlFlow::Continue;
+            }
+            match receiver.try_recv() {
+                Ok(Ok(frame)) => {
+                    let format = if frame.alpha {
+                        gdk::MemoryFormat::R8g8b8a8
+                    } else {
+                        gdk::MemoryFormat::R8g8b8
+                    };
+                    let texture = gdk::MemoryTexture::new(
+                        frame.width,
+                        frame.height,
+                        format,
+                        &glib::Bytes::from_owned(frame.data),
+                        frame.stride,
+                    );
+                    view.picture.set_paintable(Some(&texture));
+                    if first {
+                        view.actions(true);
+                        view.status.set_text(if frame.animated {
+                            "GIF animado · Edita la paleta o aplica el fondo en todos los monitores."
+                        } else { "Edita la paleta o aplica el fondo en todos los monitores." });
+                        first = false;
+                    }
+                    if frame.animated {
+                        return glib::ControlFlow::Continue;
+                    }
                 }
-                glib::ControlFlow::Continue
-            });
-            *self.timer.borrow_mut() = Some(timer);
+                Ok(Err(error)) => view
+                    .status
+                    .set_text(&format!("No se pudo abrir la imagen: {error}")),
+                Err(TryRecvError::Empty) => return glib::ControlFlow::Continue,
+                Err(TryRecvError::Disconnected) => (),
+            }
+            view.timer.borrow_mut().take();
+            glib::ControlFlow::Break
+        });
+        *self.timer.borrow_mut() = Some(timer);
+    }
+}
+
+struct PreviewFrame {
+    data: Vec<u8>,
+    width: i32,
+    height: i32,
+    stride: usize,
+    alpha: bool,
+    animated: bool,
+}
+
+fn preview_frames(data: &[u8], sender: &SyncSender<Result<PreviewFrame, String>>) -> Result<()> {
+    let loader = PixbufLoader::new();
+    loader.connect_size_prepared(|loader, width, height| {
+        let scale = (640.0 / f64::from(width))
+            .min(360.0 / f64::from(height))
+            .min(1.0);
+        loader.set_size(
+            (f64::from(width) * scale).round().max(1.0) as i32,
+            (f64::from(height) * scale).round().max(1.0) as i32,
+        );
+    });
+    let written = loader.write(data);
+    let closed = loader.close();
+    written?;
+    closed?;
+    let animation = loader
+        .animation()
+        .context("Formato de imagen no compatible")?;
+    let animated = !animation.is_static_image();
+    let iter = animation.iter(Some(SystemTime::now()));
+    loop {
+        let pixbuf = iter.pixbuf();
+        let frame = PreviewFrame {
+            data: pixbuf.read_pixel_bytes().as_ref().to_vec(),
+            width: pixbuf.width(),
+            height: pixbuf.height(),
+            stride: pixbuf.rowstride() as usize,
+            alpha: pixbuf.has_alpha(),
+            animated,
+        };
+        // One queued frame bounds memory; dropping the receiver cancels a replaced preview.
+        if sender.send(Ok(frame)).is_err() || !animated {
+            return Ok(());
         }
-        Ok(animated)
+        loop {
+            let Some(delay) = iter.delay_time() else {
+                return Ok(());
+            };
+            // Preserve GIF timing while limiting preview work to 20 frames per second.
+            std::thread::sleep(delay.max(Duration::from_millis(50)));
+            if iter.advance(SystemTime::now()) {
+                break;
+            }
+        }
     }
 }
 
@@ -345,7 +409,7 @@ pub(crate) fn build_page(window: &adw::ApplicationWindow) -> gtk::Widget {
     picture.set_can_shrink(true);
     picture.set_content_fit(gtk::ContentFit::Contain);
     picture.set_size_request(-1, 260);
-    picture.set_vexpand(true);
+    picture.set_vexpand(false);
     picture.add_css_class("card");
     detail.append(&picture);
     let name = gtk::Label::new(Some("Elige un fondo"));
@@ -425,6 +489,9 @@ pub(crate) fn build_page(window: &adw::ApplicationWindow) -> gtk::Widget {
         &gtk::ScrolledWindow::builder()
             .child(&detail)
             .hexpand(true)
+            .vexpand(true)
+            .overlay_scrolling(false)
+            .vscrollbar_policy(gtk::PolicyType::Always)
             .hscrollbar_policy(gtk::PolicyType::Never)
             .build(),
     );
@@ -815,6 +882,124 @@ mod selection_tests {
     use super::*;
 
     #[test]
+    fn preview_decodes_static_images_at_bounded_size() {
+        let image = Pixbuf::new(gdk_pixbuf::Colorspace::Rgb, true, 8, 1920, 1080).unwrap();
+        image.fill(0x336699ff);
+        let data = image.save_to_bufferv("png", &[]).unwrap();
+        let (sender, receiver) = mpsc::sync_channel(1);
+        preview_frames(&data, &sender).unwrap();
+        let frame = receiver.recv().unwrap().ok().unwrap();
+        assert!(!frame.animated);
+        assert_eq!((frame.width, frame.height), (640, 360));
+        assert!(!frame.data.is_empty());
+        assert!(preview_frames(b"not an image", &sender).is_err());
+    }
+
+    #[test]
+    fn gif_preview_worker_moves_frames_and_stops_when_selection_is_dropped() {
+        let (sender, receiver) = mpsc::sync_channel(1);
+        let worker = std::thread::spawn(move || {
+            preview_frames(include_bytes!("../tests/fixtures/preview.gif"), &sender).unwrap();
+        });
+        let first = receiver
+            .recv_timeout(Duration::from_secs(2))
+            .unwrap()
+            .ok()
+            .unwrap();
+        let next = receiver
+            .recv_timeout(Duration::from_secs(2))
+            .unwrap()
+            .ok()
+            .unwrap();
+        assert!(first.animated && next.animated);
+        assert_ne!(first.data, next.data);
+        drop(receiver);
+        worker.join().unwrap();
+    }
+
+    #[test]
+    #[ignore = "requires a GTK display"]
+    fn fastfetch_scroll_reaches_the_apply_button() {
+        adw::init().unwrap();
+        let window = adw::ApplicationWindow::builder()
+            .title("Wallpaper Studio · Scroll regression")
+            .default_width(1000)
+            .default_height(700)
+            .build();
+        let page = build_page(&window);
+        window.set_content(Some(&page));
+        let scroll = page
+            .last_child()
+            .unwrap()
+            .last_child()
+            .unwrap()
+            .downcast::<gtk::ScrolledWindow>()
+            .unwrap();
+        let viewport = scroll.child().unwrap();
+        let detail = viewport.first_child().unwrap();
+        let mut child = detail.first_child();
+        let mut expander = None;
+        let mut apply = None;
+        while let Some(widget) = child {
+            if let Ok(widget) = widget.clone().downcast::<gtk::Expander>() {
+                expander = Some(widget);
+            }
+            if let Ok(button) = widget.clone().downcast::<gtk::Button>()
+                && button.label().as_deref() == Some("Aplicar fondo y paleta")
+            {
+                apply = Some(button);
+            }
+            child = widget.next_sibling();
+        }
+        let expander = expander.unwrap();
+        expander.set_expanded(true);
+        window.present();
+        let context = glib::MainContext::default();
+        let settle = || {
+            for _ in 0..200 {
+                context.iteration(false);
+                std::thread::sleep(Duration::from_millis(5));
+            }
+        };
+        settle();
+        let adjustment = scroll.vadjustment();
+        assert!(
+            adjustment.upper() > adjustment.page_size(),
+            "Expanded Fastfetch must scroll"
+        );
+        adjustment.set_value(adjustment.upper() - adjustment.page_size());
+        settle();
+        let bounds = apply.unwrap().compute_bounds(&scroll).unwrap();
+        assert!(
+            bounds.y() >= 0.0 && bounds.y() + bounds.height() <= scroll.height() as f32,
+            "Apply must be reachable: {bounds:?}, viewport {}",
+            scroll.height()
+        );
+        println!(
+            "Scrolled to {} of {}; Apply visible at y={} in viewport {}",
+            adjustment.value(),
+            adjustment.upper(),
+            bounds.y(),
+            scroll.height()
+        );
+        if let Some(path) = std::env::var_os("WALLPAPER_SCROLL_CAPTURE") {
+            let snapshot = gtk::Snapshot::new();
+            gtk::WidgetPaintable::new(Some(&window)).snapshot(
+                &snapshot,
+                window.width() as f64,
+                window.height() as f64,
+            );
+            window
+                .renderer()
+                .unwrap()
+                .render_texture(snapshot.to_node().unwrap(), None)
+                .save_to_png(path)
+                .unwrap();
+        }
+        window.destroy();
+    }
+
+    #[test]
     #[ignore = "requires a GTK display; can run with the Broadway backend"]
     fn thumbnail_activation_uses_parent_signal_and_preserves_paths_after_filter_and_refresh() {
         gtk::init().expect("GTK display required for the thumbnail activation regression test");
@@ -885,7 +1070,7 @@ mod selection_tests {
             let texture = picture
                 .paintable()
                 .unwrap()
-                .downcast::<gdk::Texture>()
+                .downcast::<gdk::MemoryTexture>()
                 .unwrap();
             let stride = texture.width() as usize * 4;
             let mut pixels = vec![0; stride * texture.height() as usize];

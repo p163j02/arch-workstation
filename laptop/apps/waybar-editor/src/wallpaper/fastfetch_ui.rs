@@ -32,6 +32,7 @@ struct Controls {
     disk: gtk::Entry,
     width: gtk::SpinButton,
     preview: gtk::Picture,
+    preview_path: RefCell<Option<PathBuf>>,
     summary: gtk::Label,
 }
 
@@ -79,43 +80,43 @@ impl Controls {
         self.fields.set_sensitive(settings.profile != "off");
         if settings.profile == "off" {
             self.preview.set_paintable(gtk::gdk::Paintable::NONE);
+            self.preview_path.borrow_mut().take();
             self.summary
                 .set_text("Este fondo conservará la configuración actual de fastfetch.");
             return;
         }
         let image = fastfetch::image_path(&self.paths, &wallpaper, &settings);
-        match gdk_pixbuf::Pixbuf::from_file_at_scale(&image, 144, 144, true) {
-            Ok(pixbuf) => {
-                self.preview
-                    .set_paintable(Some(&gtk::gdk::Texture::for_pixbuf(&pixbuf)));
-                self.summary.set_text(&format!(
-                    "{}\n\n{}",
-                    fastfetch::text(&settings.heading, preset.heading),
-                    fastfetch::text(&settings.footer, preset.footer)
-                ));
-                if let Some(palette) = self.palette.borrow().as_ref() {
-                    let heading = glib::markup_escape_text(fastfetch::text(
-                        &settings.heading,
-                        preset.heading,
-                    ));
-                    let footer =
-                        glib::markup_escape_text(fastfetch::text(&settings.footer, preset.footer));
-                    let key =
-                        glib::markup_escape_text(fastfetch::text(&settings.memory, preset.memory));
-                    self.summary.set_markup(&format!(
+        if self.preview_path.borrow().as_ref() != Some(&image) {
+            let texture = gdk_pixbuf::Pixbuf::from_file_at_scale(&image, 144, 144, true)
+                .ok()
+                .map(|pixbuf| gtk::gdk::Texture::for_pixbuf(&pixbuf));
+            self.preview.set_paintable(texture.as_ref());
+            *self.preview_path.borrow_mut() = Some(image.clone());
+        }
+        if self.preview.paintable().is_some() {
+            self.summary.set_text(&format!(
+                "{}\n\n{}",
+                fastfetch::text(&settings.heading, preset.heading),
+                fastfetch::text(&settings.footer, preset.footer)
+            ));
+            if let Some(palette) = self.palette.borrow().as_ref() {
+                let heading =
+                    glib::markup_escape_text(fastfetch::text(&settings.heading, preset.heading));
+                let footer =
+                    glib::markup_escape_text(fastfetch::text(&settings.footer, preset.footer));
+                let key =
+                    glib::markup_escape_text(fastfetch::text(&settings.memory, preset.memory));
+                self.summary.set_markup(&format!(
                         "<span foreground=\"{}\">{heading}</span>\n\n<span foreground=\"{}\">{key}</span> │ <span foreground=\"{}\">Texto de ejemplo</span>\n\n<span foreground=\"{}\">{footer}</span>",
                         settings.frame_color.hex(palette), settings.key_color.hex(palette),
                         settings.text_color.hex(palette), settings.frame_color.hex(palette),
                     ));
-                }
             }
-            Err(_) => {
-                self.preview.set_paintable(gtk::gdk::Paintable::NONE);
-                self.summary.set_text(&format!(
-                    "No se pudo cargar la imagen:\n{}",
-                    image.display()
-                ));
-            }
+        } else {
+            self.summary.set_text(&format!(
+                "No se pudo cargar la imagen:\n{}",
+                image.display()
+            ));
         }
     }
 }
@@ -218,6 +219,7 @@ impl Editor {
             disk,
             width,
             preview,
+            preview_path: RefCell::default(),
             summary,
         });
         for field in [
@@ -335,6 +337,7 @@ impl Editor {
     pub fn load(&self, wallpaper: &Path, settings: &fastfetch::Settings) {
         let c = &self.controls;
         c.loading.set(true);
+        c.preview_path.borrow_mut().take();
         *c.wallpaper.borrow_mut() = wallpaper.to_owned();
         c.profile.set_selected(
             fastfetch::PROFILES
