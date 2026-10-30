@@ -23,6 +23,21 @@ mv -f -- "$binary_temp" "$binary"
 trap - EXIT
 ln -sfn waybar-editor "$wallpaper_binary"
 ln -sfn waybar-editor "$settings_binary"
+# The image profiles are shared with the full desktop dotfiles installation.
+if [ -d ../../fastfetch/images ]; then
+    image_directory="${XDG_CONFIG_HOME:-$HOME/.config}/fastfetch/images"
+    mkdir -p "$image_directory"
+    for image in ../../fastfetch/images/wallpaper-studio-*.png; do
+        [ -f "$image" ] || continue
+        install -m644 "$image" "$image_directory/$(basename "$image")"
+    done
+    for theme in bttf space nature arch; do
+        for image in "../../fastfetch/images/silphwave/$theme/"*.png; do
+            [ -f "$image" ] || continue
+            install -Dm644 "$image" "$image_directory/silphwave/$theme/$(basename "$image")"
+        done
+    done
+fi
 mkdir -p "$(dirname "$entry")"
 printf '%s\n' '[Desktop Entry]' 'Type=Application' 'Name=Waybar Editor' 'Comment=Edita tu barra, aplicaciones y presets de Waybar' "Exec=\"$binary\"" 'Icon=preferences-desktop' 'Terminal=false' 'Categories=Settings;DesktopSettings;' 'Keywords=Waybar;Hyprland;Barra;Panel;' 'StartupWMClass=io.local.WaybarEditor' > "$entry"
 chmod 644 "$entry"

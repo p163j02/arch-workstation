@@ -1,3 +1,6 @@
+mod fastfetch;
+mod fastfetch_gallery;
+mod fastfetch_ui;
 mod login;
 mod palette;
 mod terminal;
@@ -15,7 +18,7 @@ use std::process::Command;
 use std::rc::Rc;
 use std::time::{Duration, SystemTime};
 use theme::{
-    Palette, Paths, Transition, apply_wallpaper, extract_palette, palette_for, save_palette,
+    Palette, Paths, Transition, apply_wallpaper, extract_palette, palette_for, save_preferences,
 };
 
 pub fn run() {
@@ -45,6 +48,13 @@ pub fn run() {
 
 fn cli(args: &[String]) -> Result<()> {
     let paths = Paths::discover();
+    if args == ["--sync-fastfetch"] {
+        if let Some(image) = paths.read_state()?.current {
+            let image = PathBuf::from(image);
+            return fastfetch::sync(&paths, &image, &palette_for(&paths, &image)?);
+        }
+        return Ok(());
+    }
     if args == ["--sync-terminal"] {
         if let Some(image) = paths.read_state()?.current {
             let image = PathBuf::from(image);
@@ -66,7 +76,7 @@ fn cli(args: &[String]) -> Result<()> {
     let image = match args {
         [flag] if flag == "--help" || flag == "-h" => {
             println!(
-                "Wallpaper Studio\n\nUso: wallpaper-studio\n     wallpaper-studio --apply RUTA\n     wallpaper-studio --restore\n     wallpaper-studio --sync-login\n     wallpaper-studio --sync-terminal\n\nFondos estáticos y GIF animados, paletas por imagen y transiciones.\nAplica a todos los monitores. Usa awww-daemon y Hyprland."
+                "Wallpaper Studio\n\nUso: wallpaper-studio\n     wallpaper-studio --apply RUTA\n     wallpaper-studio --restore\n     wallpaper-studio --sync-login\n     wallpaper-studio --sync-terminal\n     wallpaper-studio --sync-fastfetch\n\nFondos estáticos y GIF animados, paletas por imagen y transiciones.\nAplica a todos los monitores. Usa awww-daemon y Hyprland."
             );
             return Ok(());
         }
@@ -84,11 +94,13 @@ fn cli(args: &[String]) -> Result<()> {
             }
         },
         [flag, image] if flag == "--apply" => PathBuf::from(image),
-        _ => bail!("Uso: wallpaper-studio [--apply RUTA | --restore | --help]"),
+        _ => bail!(
+            "Uso: wallpaper-studio [--apply RUTA | --restore | --sync-login | --sync-terminal | --sync-fastfetch | --help]"
+        ),
     };
     let palette = palette_for(&paths, &image)?;
     let transition = paths.read_state()?.transition;
-    for warning in apply_wallpaper(&paths, &image, &palette, &transition)? {
+    for warning in apply_wallpaper(&paths, &image, &palette, &transition, None)? {
         eprintln!("{warning}");
     }
     Ok(())
@@ -126,6 +138,7 @@ struct View {
     save: gtk::Button,
     reset: gtk::Button,
     colors: Vec<gtk::ColorDialogButton>,
+    fastfetch: fastfetch_ui::Editor,
     selected: Rc<RefCell<Option<PathBuf>>>,
     generation: Rc<Cell<u64>>,
     timer: Rc<RefCell<Option<glib::SourceId>>>,
@@ -170,6 +183,7 @@ impl View {
         self.apply.set_sensitive(enabled);
         self.save.set_sensitive(enabled);
         self.reset.set_sensitive(enabled);
+        self.fastfetch.widget.set_sensitive(enabled);
         for button in &self.colors {
             button.set_sensitive(enabled);
         }
@@ -195,15 +209,18 @@ impl View {
             let result = gio::spawn_blocking(move || -> Result<_> {
                 let palette = palette_for(&paths, &path)?;
                 let data = fs::read(&path).context("No se pudo leer la vista previa")?;
-                Ok((palette, data))
+                let fastfetch = fastfetch::settings_for(&paths, &path)?;
+                Ok((palette, data, fastfetch))
             })
             .await;
             if view.generation.get() != generation {
                 return;
             }
             match result {
-                Ok(Ok((palette, data))) => {
+                Ok(Ok((palette, data, fastfetch))) => {
                     view.set_palette(&palette);
+                    view.fastfetch
+                        .load(view.selected.borrow().as_deref().unwrap(), &fastfetch);
                     match view.preview(&data) {
                         Ok(animated) => {
                             view.actions(true);
@@ -368,11 +385,13 @@ pub(crate) fn build_page(window: &adw::ApplicationWindow) -> gtk::Widget {
     }
     detail.append(&swatches);
     let palette_actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-    let save = gtk::Button::with_label("Guardar paleta");
+    let save = gtk::Button::with_label("Guardar ajustes del fondo");
     let reset = gtk::Button::with_label("Extraer de nuevo");
     palette_actions.append(&save);
     palette_actions.append(&reset);
     detail.append(&palette_actions);
+    let fastfetch = fastfetch_ui::Editor::new(&paths, &window);
+    detail.append(&fastfetch.widget);
     let transitions = gtk::Box::new(gtk::Orientation::Horizontal, 12);
     transitions.append(&gtk::Label::new(Some("Transición")));
     let effects = ["fade", "wipe", "wave", "center", "outer", "random", "none"];
@@ -418,11 +437,20 @@ pub(crate) fn build_page(window: &adw::ApplicationWindow) -> gtk::Widget {
         save,
         reset,
         colors,
+        fastfetch,
         selected: Rc::default(),
         generation: Rc::default(),
         timer: Rc::default(),
         paths: paths.clone(),
     });
+    for button in &view.colors {
+        let weak = Rc::downgrade(&view);
+        button.connect_rgba_notify(move |_| {
+            if let Some(view) = weak.upgrade() {
+                view.fastfetch.set_palette(&view.palette());
+            }
+        });
+    }
     view.actions(false);
     let state = paths.read_state();
     let roots = Rc::new(RefCell::new(vec![paths.wallpapers.clone()]));
@@ -523,9 +551,9 @@ pub(crate) fn build_page(window: &adw::ApplicationWindow) -> gtk::Widget {
         let Some(path) = save_view.selected.borrow().clone() else {
             return;
         };
-        match save_palette(&save_view.paths, &path, &save_view.palette()) {
+        match save_preferences(&save_view.paths, &path, &save_view.palette(), &save_view.fastfetch.settings()) {
             Ok(()) => save_view.status.set_text(
-                "Paleta guardada para este fondo. Pulsa Aplicar para actualizar el sistema.",
+                "Paleta y fastfetch guardados para este fondo. Pulsa Aplicar para actualizar el sistema.",
             ),
             Err(error) => save_view
                 .status
@@ -573,6 +601,7 @@ pub(crate) fn build_page(window: &adw::ApplicationWindow) -> gtk::Widget {
         let view = apply_view.clone();
         view.generation.set(view.generation.get().wrapping_add(1));
         let palette = view.palette();
+        let fastfetch = view.fastfetch.settings();
         let transition = Transition {
             effect: effects[effect.selected() as usize].into(),
             duration: duration.value(),
@@ -588,16 +617,17 @@ pub(crate) fn build_page(window: &adw::ApplicationWindow) -> gtk::Widget {
         apply_busy.set(true);
         let busy = apply_busy.clone();
         glib::spawn_future_local(async move {
-            let result =
-                gio::spawn_blocking(move || apply_wallpaper(&paths, &image, &palette, &transition))
-                    .await;
+            let result = gio::spawn_blocking(move || {
+                apply_wallpaper(&paths, &image, &palette, &transition, Some(&fastfetch))
+            })
+            .await;
             busy.set(false);
             body.set_sensitive(true);
             header.set_sensitive(true);
             match result {
-                Ok(Ok(warnings)) if warnings.is_empty() => view
-                    .status
-                    .set_text("Fondo y paleta aplicados a Waybar, Eww y los bordes de Hyprland."),
+                Ok(Ok(warnings)) if warnings.is_empty() => view.status.set_text(
+                    "Fondo y ajustes aplicados. Ejecuta fastfetch de nuevo para ver su configuración actual.",
+                ),
                 Ok(Ok(warnings)) => view.status.set_text(&warnings.join("\n")),
                 Ok(Err(error)) => view
                     .status

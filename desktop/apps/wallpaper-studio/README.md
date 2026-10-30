@@ -48,7 +48,65 @@ wallpaper-studio --apply /ruta/al/fondo.gif
 wallpaper-studio --restore
 wallpaper-studio --sync-login
 wallpaper-studio --sync-terminal
+wallpaper-studio --sync-fastfetch
 ```
+
+## Fastfetch por fondo
+
+En **Personalizar fastfetch** puedes elegir los perfiles **Volver al futuro**, **Espacio**,
+**Naturaleza** y **Arch / neutro**, o **Automático según el nombre del fondo**. El automático
+reconoce `bttf`/`dmc-*`, nombres espaciales como `galaxy`/`universe` y paisajes como
+`paisaje`/`sunset`; para otros nombres usa Arch. No analiza el contenido de la imagen.
+Puedes cambiar esa elección por fondo y compartir un perfil entre varios wallpapers.
+
+La sección muestra la imagen y los textos del perfil. Permite elegir otra imagen, editar
+el título, la frase final y las etiquetas de memoria y disco, y ajustar el ancho de la
+imagen. Los campos vacíos usan los valores del perfil. **Guardar ajustes del fondo**
+guarda la paleta y fastfetch sin aplicarlos; **Aplicar fondo y paleta** los guarda y aplica.
+Los colores de etiquetas, título y texto siguen la paleta del fondo.
+
+**Biblioteca…**, junto al campo de imagen, abre una galería con miniaturas de las cuatro
+imágenes originales y la colección **Silphwave**: 5 de Volver al futuro, 5 de Espacio,
+5 de Naturaleza y 4 de Arch. Empieza mostrando el tema del perfil elegido y permite
+cambiar de tema o verlos todos. Seleccionar una miniatura cambia la imagen del borrador;
+guarda o aplica para conservarla por wallpaper. Los textos y el perfil se eligen de forma
+independiente. **Otra imagen…** permite buscar un archivo fuera de la biblioteca.
+
+La colección se instala en `~/.config/fastfetch/images/silphwave/` (o en `XDG_CONFIG_HOME`).
+Se vuelve a leer al abrir la biblioteca, por lo que puedes añadir más imágenes a las
+subcarpetas `bttf`, `space`, `nature` y `arch`. El instalador copia las imágenes originales
+del repositorio conservando sus nombres; no las recorta ni las vuelve a comprimir.
+
+En esa misma sección, **Color del texto de los datos**, **Color de las etiquetas** y
+**Color de títulos y marcos** muestran los mismos **16 colores ANSI** que aparecen en los
+bloques de fastfetch: ocho normales en la primera fila y ocho brillantes en la segunda.
+Todos los colores se ven como muestras antes de seleccionarlos; el color elegido queda
+marcado, y al pasar el puntero sobre una muestra aparece su índice y código hexadecimal.
+Hay una opción **Predeterminado** con su propia muestra: Texto para los datos, Acento para
+las etiquetas y Secundario para títulos y marcos.
+
+La paleta de 16 colores se calcula en la misma función que genera los colores de Kitty,
+a partir de la paleta del fondo; no es una segunda paleta fija. Si la editas, se conserva
+el índice elegido y las muestras y los textos usan su nuevo color. Cada fondo recuerda
+sus elecciones. Los ajustes anteriores conservan los predeterminados y las elecciones
+de Texto/Acento/Secundario/Fondo siguen siendo compatibles. **Usar valores del perfil**
+también restablece estas tres elecciones.
+
+Los ajustes se conservan por ruta del wallpaper en el estado de Studio. Aplicar o restaurar
+un fondo ya configurado actualiza `~/.config/fastfetch/config.jsonc`, incluidas las llamadas
+`--apply` y `--restore`. `--sync-fastfetch` actualiza solo fastfetch con el fondo guardado.
+Una actualización del programa no modifica fastfetch hasta que configures un fondo desde
+la interfaz. **No cambiar fastfetch** conserva la configuración que esté activa cuando se
+aplique ese fondo. La salida ya impresa en las terminales no se redibuja: ejecuta fastfetch
+otra vez o abre una terminal nueva.
+
+Antes del primer reemplazo, Studio guarda una copia íntegra de la configuración anterior en
+`~/.local/state/wallpaper-studio/fastfetch-backup/config.jsonc`. Para recuperar esa versión,
+elige **No cambiar fastfetch** en los fondos configurados y copia el respaldo a la ruta
+original. Se respetan `XDG_CONFIG_HOME` y `XDG_STATE_HOME`. El instalador del desktop copia
+las cuatro imágenes de `desktop/fastfetch/images/wallpaper-studio-*.png`; se muestran con
+el protocolo gráfico de Kitty, como la configuración anterior. Los ASCII quedan para una
+revisión futura.
 
 ## Colores de la terminal
 

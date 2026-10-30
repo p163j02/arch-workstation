@@ -14,6 +14,14 @@ También aparece como **Configuración del PC** en Rofi. El instalador del perfi
 
 El instalador de la app actualiza binarios y accesos. En una instalación anterior también hay que actualizar las configuraciones del perfil desktop para conectar Eww y los adaptadores de los paneles. `bash install.sh desktop --config-only` hace esa actualización y crea un respaldo de las configuraciones, conservando `hypr/local.conf` y los ajustes privados. Revisa tus personalizaciones antes de actualizar todo el perfil. Los cambios nuevos de esta integración afectan `eww/desktop/sysmon/eww.yuck`, `hypr/local-settings.lua`, `hypr/session-start.sh` y el adaptador existente del reproductor.
 
+## Fondos y fastfetch
+
+La sección de Wallpaper Studio incluye **Personalizar fastfetch**: perfiles y textos por
+fondo, selección de colores entre las 16 muestras ANSI de Kitty y una biblioteca con las
+cuatro imágenes originales y 19 variantes Silphwave. **Guardar ajustes del fondo** conserva
+el borrador; **Aplicar fondo y paleta** actualiza el escritorio y la configuración de
+fastfetch. Consulta [la guía de Wallpaper Studio](../wallpaper-studio/README.md#fastfetch-por-fondo).
+
 ## Pantallas
 
 - **Volver a detectar** consulta las pantallas conectadas, incluidas las desactivadas, mediante `hyprctl -j monitors all`.

@@ -42,6 +42,7 @@ pub(super) struct StateFile {
     pub palettes: HashMap<String, Palette>,
     pub folders: Vec<String>,
     pub transition: Transition,
+    pub fastfetch: HashMap<String, super::fastfetch::Settings>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -79,6 +80,7 @@ pub(super) struct Paths {
     pub hypr: PathBuf,
     pub control_style: PathBuf,
     pub kitty: PathBuf,
+    pub fastfetch: PathBuf,
 }
 impl Paths {
     pub fn discover() -> Self {
@@ -98,6 +100,7 @@ impl Paths {
             hypr: config.join("hypr/local.conf"),
             control_style: config.join("eww/control-center/wallpaper-studio.scss"),
             kitty: config.join("kitty/kitty.conf"),
+            fastfetch: config.join("fastfetch"),
         }
     }
     pub fn read_state(&self) -> Result<StateFile> {
@@ -151,11 +154,18 @@ fn image_key(image: &Path) -> Result<String> {
         .context("La ruta del fondo debe ser UTF-8")
 }
 
-pub(super) fn save_palette(paths: &Paths, image: &Path, palette: &Palette) -> Result<()> {
+pub(super) fn save_preferences(
+    paths: &Paths,
+    image: &Path,
+    palette: &Palette,
+    fastfetch: &super::fastfetch::Settings,
+) -> Result<()> {
     palette.validate()?;
+    super::fastfetch::config(paths, image, palette, fastfetch)?;
     let key = image_key(image)?;
     paths.update_state(|state| {
-        state.palettes.insert(key, palette.clone());
+        state.palettes.insert(key.clone(), palette.clone());
+        state.fastfetch.insert(key, fastfetch.clone());
     })
 }
 pub(super) fn extract_palette(path: &Path) -> Result<Palette> {
@@ -187,15 +197,35 @@ pub(super) fn apply_wallpaper(
     image: &Path,
     palette: &Palette,
     transition: &Transition,
+    fastfetch: Option<&super::fastfetch::Settings>,
 ) -> Result<Vec<String>> {
-    apply_with(paths, image, palette, transition, checked_command)
+    apply_configured_with(
+        paths,
+        image,
+        palette,
+        transition,
+        fastfetch,
+        checked_command,
+    )
 }
 
+#[cfg(test)]
 fn apply_with(
     paths: &Paths,
     image: &Path,
     palette: &Palette,
     transition: &Transition,
+    command: impl Fn(&str, &[&str]) -> Result<()>,
+) -> Result<Vec<String>> {
+    apply_configured_with(paths, image, palette, transition, None, command)
+}
+
+fn apply_configured_with(
+    paths: &Paths,
+    image: &Path,
+    palette: &Palette,
+    transition: &Transition,
+    fastfetch: Option<&super::fastfetch::Settings>,
     command: impl Fn(&str, &[&str]) -> Result<()>,
 ) -> Result<Vec<String>> {
     palette.validate()?;
@@ -206,6 +236,11 @@ fn apply_with(
     }
     let _lock = paths.lock()?;
     let mut state = paths.read_state()?;
+    if let Some(settings) = fastfetch {
+        // Validate the image and text before invoking the wallpaper backend.
+        super::fastfetch::config(paths, image, palette, settings)?;
+        state.fastfetch.insert(key.clone(), settings.clone());
+    }
     // Prepare and validate every managed file before changing the wallpaper.
     let old_style = fs::read(&paths.style).context("No se pudo leer el CSS de Waybar")?;
     let css = themed_css(std::str::from_utf8(&old_style)?, palette)?;
@@ -264,7 +299,7 @@ fn apply_with(
         return Err(error);
     }
     state.current = Some(key.clone());
-    state.palettes.insert(key, palette.clone());
+    state.palettes.insert(key.clone(), palette.clone());
     state.transition = transition.clone();
     let mut warnings = Vec::new();
     if let Err(error) = write_atomic(&paths.state, &serde_json::to_vec_pretty(&state)?) {
@@ -307,6 +342,13 @@ fn apply_with(
     if let Err(error) = super::terminal::sync(paths, palette, &command) {
         warnings.push(format!(
             "Fondo aplicado; no se pudo sincronizar Kitty: {error:#}"
+        ));
+    }
+    if let Some(settings) = state.fastfetch.get(&key)
+        && let Err(error) = super::fastfetch::sync_settings(paths, image, palette, settings)
+    {
+        warnings.push(format!(
+            "Fondo aplicado; no se pudo sincronizar fastfetch: {error:#}"
         ));
     }
     Ok(warnings)
@@ -584,6 +626,7 @@ mod tests {
             hypr: dir.path().join("hypr/local.conf"),
             control_style: dir.path().join("eww/control-center/wallpaper-studio.scss"),
             kitty: dir.path().join("kitty/kitty.conf"),
+            fastfetch: dir.path().join("fastfetch"),
         };
         fs::create_dir_all(paths.style.parent().unwrap()).unwrap();
         fs::write(
@@ -798,6 +841,67 @@ mod tests {
         fs::write(&paths.state, "invalid").unwrap();
         assert!(paths.update_state(|s| s.current = None).is_err());
         assert_eq!(fs::read_to_string(&paths.state).unwrap(), "invalid");
+    }
+
+    #[test]
+    fn fastfetch_changes_only_after_backend_success_and_settings_survive_restore() {
+        let (_dir, paths, image, palette) = fixture();
+        fs::create_dir_all(paths.fastfetch.join("images")).unwrap();
+        fs::write(
+            paths.fastfetch.join("images/wallpaper-studio-nature.png"),
+            b"image",
+        )
+        .unwrap();
+        let destination = paths.fastfetch.join("config.jsonc");
+        fs::write(&destination, "original").unwrap();
+        let settings = super::super::fastfetch::Settings {
+            profile: "nature".into(),
+            heading: "MY LANDSCAPE".into(),
+            ..Default::default()
+        };
+        assert!(
+            apply_configured_with(
+                &paths,
+                &image,
+                &palette,
+                &Transition::default(),
+                Some(&settings),
+                |program, _| {
+                    assert_eq!(program, "awww");
+                    bail!("backend failed");
+                }
+            )
+            .is_err()
+        );
+        assert_eq!(fs::read_to_string(&destination).unwrap(), "original");
+        assert!(paths.read_state().unwrap().fastfetch.is_empty());
+        assert!(
+            apply_configured_with(
+                &paths,
+                &image,
+                &palette,
+                &Transition::default(),
+                Some(&settings),
+                |_, _| Ok(())
+            )
+            .unwrap()
+            .is_empty()
+        );
+        let configured = fs::read_to_string(&destination).unwrap();
+        assert!(configured.contains("MY LANDSCAPE"));
+        assert_eq!(
+            paths.read_state().unwrap().fastfetch[image.to_str().unwrap()],
+            settings
+        );
+        // Restoring through the CLI passes no draft and must reuse the saved settings.
+        assert!(
+            apply_with(&paths, &image, &palette, &Transition::default(), |_, _| Ok(
+                ()
+            ))
+            .unwrap()
+            .is_empty()
+        );
+        assert_eq!(fs::read_to_string(destination).unwrap(), configured);
     }
 
     #[test]

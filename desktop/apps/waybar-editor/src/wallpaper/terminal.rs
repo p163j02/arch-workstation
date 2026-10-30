@@ -42,6 +42,31 @@ fn mix(first: &str, second: &str, amount: f64) -> String {
     format!("#{red:02x}{green:02x}{blue:02x}")
 }
 
+// Shared by Kitty and fastfetch's color pickers so the 16 blocks agree exactly.
+pub(super) fn ansi_colors(palette: &Palette) -> [String; 16] {
+    let Palette {
+        accent,
+        secondary,
+        background,
+        foreground,
+    } = palette;
+    let normal = [
+        background.clone(),
+        mix("#e06c75", secondary, 0.16),
+        mix("#69b884", accent, 0.12),
+        mix("#e0bd68", secondary, 0.12),
+        accent.clone(),
+        secondary.clone(),
+        mix(accent, secondary, 0.5),
+        mix(foreground, background, 0.12),
+    ];
+    std::array::from_fn(|index| match index {
+        0..=7 => normal[index].clone(),
+        15 => foreground.clone(),
+        _ => mix(&normal[index - 8], foreground, 0.25),
+    })
+}
+
 fn themed_config(original: &str, palette: &Palette) -> Result<String> {
     palette.validate()?;
     let Palette {
@@ -65,24 +90,8 @@ tab_bar_background {background}\n"
     );
     // Keep red/green/yellow recognizable for errors, success and warnings,
     // while tinting them towards the wallpaper's two accents.
-    let ansi = [
-        background.clone(),
-        mix("#e06c75", secondary, 0.16),
-        mix("#69b884", accent, 0.12),
-        mix("#e0bd68", secondary, 0.12),
-        accent.clone(),
-        secondary.clone(),
-        mix(accent, secondary, 0.5),
-        mix(foreground, background, 0.12),
-    ];
-    for (index, color) in ansi.iter().enumerate() {
+    for (index, color) in ansi_colors(palette).iter().enumerate() {
         writeln!(colors, "color{index} {color}")?;
-        let bright = if index == 7 {
-            foreground.clone()
-        } else {
-            mix(color, foreground, 0.25)
-        };
-        writeln!(colors, "color{} {bright}", index + 8)?;
     }
     replace_block(
         original,
@@ -149,6 +158,7 @@ mod tests {
             hypr: temp.path().join("local.conf"),
             control_style: temp.path().join("control.scss"),
             kitty: temp.path().join("kitty.conf"),
+            fastfetch: temp.path().join("fastfetch"),
         };
         sync(&paths, &palette(), |_, _| panic!("Kitty is not configured")).unwrap();
         assert!(!paths.kitty.exists());
